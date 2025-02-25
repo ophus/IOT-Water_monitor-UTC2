@@ -53,10 +53,9 @@
           <div class="card-body">
             <p class="mb-1"><strong>pH:</strong> 6.5 - 8.5</p>
             <p class="mb-1"><strong>TDS:</strong> &lt; 500 ppm</p>
-            <p class="mb-1"><strong>DO:</strong> &gt; 5 mg/L</p>
             <p class="mb-1"><strong>Độ đục:</strong> &lt; 5 NTU</p>
             <p class="mb-0"><strong>Nhiệt độ:</strong> Tùy theo mùa</p>
-            <small class="text-muted">Nguồn: QCVN 01-1:2024/BYT</small>
+            <small class="text-muted">Nguồn: <a href ="" target = "_blank" rel = "noopener noreferrer ">  QCVN 01-1:2024/BYT</small></a>
           </div>
         </div>
         <!-- Điều Khiển Hệ Thống -->
@@ -68,7 +67,6 @@
             <div class="d-grid gap-3">
               <button id="btnTestSensor" class="btn btn-success control-btn">Test Cảm Biến</button>
               <button id="btnStartMeasure" class="btn btn-primary control-btn">Bắt đầu Đo</button>
-              <button id="btnFilter" class="btn btn-warning control-btn">Lọc</button>
               <button id="btnEmergencyStop" class="btn btn-danger control-btn">Dừng Khẩn</button>
             </div>
           </div>
@@ -93,15 +91,20 @@
           </div>
           <div class="card-body">
             <div class="row text-center">
-              <div class="col-md-4 mb-3">
+              <div class="col mb-3">
                 <h5>Nhiệt Độ</h5>
                 <p id="tempValue" class="sensor-value">-- °C</p>
               </div>
-              <div class="col-md-4 mb-3">
+              <div class="col mb-3">
                 <h5>pH</h5>
                 <p id="phValue" class="sensor-value">--</p>
               </div>
-              <div class="col-md-4 mb-3">
+              <div class="col mb-3">
                 <h5>Độ Đục</h5>
                 <p id="turbidityValue" class="sensor-value">-- NTU</p>
-              </
+              </div>
+              <div class="col mb-3"> 
+                <h5>TDS</h5>
+                <p id="TDSValue" class="sensor-value">-- PPM</p>
+                </div>
+            </div>
