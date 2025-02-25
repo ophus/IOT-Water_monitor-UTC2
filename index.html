@@ -21,6 +21,7 @@
     }
     .card {
         box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+
     }
     .dashboard-header {
         background: linear-gradient(135deg, #271756, #271756);
@@ -44,22 +45,45 @@
         margin-bottom: 0;
         padding-bottom: 0;
     }
+    .custom-title {
+      font-size: 12px; 
+      font-weight: bold;
+      text-transform: uppercase; 
+      margin-bottom: 0;
+    }
+    
+    .text-warning-custom {
+      font-size: 12px; 
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #ffc107; 
+    }
+    
+  
+    
   </style>
 </head>
     <link rel="icon" type="image/png" href="Media\UTC2.png">
 <body>
 
   <!-- Header -->
-  <header class="dashboard-header mb-4 d-flex align-items-center">
-    <img src="Media/UTC2.png" alt="Logo" class="ms-4 me-3" style="height: 80px;">
-        <!-- <div class="header-brand-text">
-            <p>Trường đại học giao thông vận tải</p>
-            <p>Phân hiệu tại tp. hồ chí minh</p>
-        </div> -->
-    <div class="text-center flex-grow-1">
-      <h1 class="mb-0">Hệ Thống Giám Sát Chất Lượng Nước</h1>
-      <p class="mb-0">Theo tiêu chuẩn Bộ Y Tế &amp; QCVN 01-1:2024/BYT</p>
-    </div>
+  <header class="container-fluid py-3 mb-3" style="background-color:#271756 ; color: white;">
+    <div class="d-flex align-items-center justify-content-between px-4 mt-n2">
+      <div class="d-flex align-items-center">
+        <!-- Logo -->
+        <img src="Media/UTC2.png" alt="Logo" class="me-3 mt-n2" style="height: 55px;">
+        <div class="d-flex flex-column">
+          <p class="custom-title mb-1 ">TRƯỜNG ĐẠI HỌC GIAO THÔNG VẬN TẢI</p>
+          <p class="text-warning-custom">PHÂN HIỆU TẠI TP. HỒ CHÍ MINH</p>
+        </div>
+      </div>
+      <div class="text-center">
+        <p class="fw-bold mb-1 text-uppercase fs-4">Hệ Thống Giám Sát Chất Lượng Nước</p>
+        <p class="fw-bold mb-1 text-uppercase fs-6">Theo tiêu chuẩn Bộ Y Tế &amp; QCVN 01-1:2024/BYT</p>
+      </div>
+      <div style="width: 80px;"></div>
+
+    </div>  
   </header>
 
   <!-- Main Container -->
@@ -137,18 +161,15 @@
       </div>
     </div>
   </div>
-<footer class="footer mt-4 py-3 text-white text-center">
+  <footer class="footer mt-4 py-3 text-white" style="background-color: #271756;">
     <div class="container">
-        <p class="mb-1">Đề tài: Giám Sát Chất Lượng Nước</p>
-        <p class="mb-1">Thực hiện bởi:</p>
+      <div class="row">
         
-        <p>
-            Lê Minh Phúc - MSSV: 6351030056 |   
-            Lê Thanh Vương - MSSV: 6351030057 |   
-            Trần Hoàng Nghĩa - MSSV: 6351030058 |   
-            Nguyễn Huy Hậu - MSSV: 6351030059
-        </p>
-    </div>
-</footer>
-</body>
-</html>
+        <!-- Cột 1: Đề tài -->
+        <div class="col-md-3 text-start">
+          <p class="text-warning-custom fw-bold fs-5 mb-2">Đề tài:</p>
+          <p class="fs-6">Giám sát chất lượng nước</p>
+        </div>
+  
+        <!-- Cột 2: Thực hiện bởi -->
+        <div class="col-md-3 border-start">
