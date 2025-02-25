@@ -10,34 +10,44 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      background-color: #f0f2f5;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        background-color: #f0f2f5;
     }
     .card {
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
     .dashboard-header {
-      background: linear-gradient(135deg, #0d6efd, #00aaff);
-      color: #fff;
-      padding: 20px 0;
-      text-align: center;
+        background: linear-gradient(135deg, #0d6efd, #00aaff);
+        color: #ffffff;
+        padding: 20px 0;
+        text-align: center;
     }
     .control-btn {
-      font-size: 1.1rem;
-      padding: 12px;
-      border-radius: 8px;
+        font-size: 1.1rem;
+        padding: 12px;
+        border-radius: 8px;
     }
     .sensor-value {
-      font-size: 2rem;
-      font-weight: bold;
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .footer {
+        margin-top: auto;
+        padding: 10px 0;
     }
   </style>
 </head>
 <body>
 
   <!-- Header -->
-  <header class="dashboard-header mb-4">
-    <h1>Hệ Thống Giám Sát Chất Lượng Nước</h1>
-    <p>Theo tiêu chuẩn Bộ Y Tế &amp; QCVN 01-1:2024/BYT</p>
+  <header class="dashboard-header mb-4 d-flex align-items-center">
+    <img src="Media/UTC21.png" alt="Logo" class="ms-5 me-3" style="height: 80px;">
+    <div class="text-center flex-grow-1">
+      <h1 class="mb-0">Hệ Thống Giám Sát Chất Lượng Nước</h1>
+      <p class="mb-0">Theo tiêu chuẩn Bộ Y Tế &amp; QCVN 01-1:2024/BYT</p>
+    </div>
   </header>
 
   <!-- Main Container -->
@@ -55,7 +65,9 @@
             <p class="mb-1"><strong>TDS:</strong> &lt; 500 ppm</p>
             <p class="mb-1"><strong>Độ đục:</strong> &lt; 5 NTU</p>
             <p class="mb-0"><strong>Nhiệt độ:</strong> Tùy theo mùa</p>
-            <small class="text-muted">Nguồn: <a href ="" target = "_blank" rel = "noopener noreferrer ">  QCVN 01-1:2024/BYT</small></a>
+            <small class="text-muted">Nguồn: 
+              <a href="https://vinfil.com/wp-content/uploads/2021/08/Vinfil-so-sanh-cac-tieu-chuan-nuoc-sach-sinh-hoat.pdf" target="_blank" rel="noopener noreferrer">QCVN 01-1:2024/BYT</a>
+            </small>
           </div>
         </div>
         <!-- Điều Khiển Hệ Thống -->
@@ -91,20 +103,41 @@
           </div>
           <div class="card-body">
             <div class="row text-center">
-              <div class="col mb-3">
+              <div class="col-md-3 mb-3">
                 <h5>Nhiệt Độ</h5>
                 <p id="tempValue" class="sensor-value">-- °C</p>
               </div>
-              <div class="col mb-3">
+              <div class="col-md-3 mb-3">
                 <h5>pH</h5>
                 <p id="phValue" class="sensor-value">--</p>
               </div>
-              <div class="col mb-3">
+              <div class="col-md-3 mb-3">
                 <h5>Độ Đục</h5>
                 <p id="turbidityValue" class="sensor-value">-- NTU</p>
               </div>
-              <div class="col mb-3"> 
+              <div class="col-md-3 mb-3"> 
                 <h5>TDS</h5>
                 <p id="TDSValue" class="sensor-value">-- PPM</p>
-                </div>
+              </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<footer class="footer mt-4 py-3 bg-dark text-white text-center">
+    <div class="container">
+        <p class="mb-1">Dự án: Giám Sát Chất Lượng Nước</p>
+        <p class="mb-1">Thực hiện bởi:</p>
+        <p>
+            Lê Minh Phúc - MSSV: 6351030056 |   
+            Lê Thanh Vương - MSSV: 6351030057 |   
+            Trần Hoàng Nghĩa - MSSV: 6351030058 |   
+            Nguyễn Huy Hậu - MSSV: 6351030059
+        </p>
+        <small class="text-muted">© 2025 Nhóm XYZ. Mọi quyền được bảo lưu.</small>
+    </div>
+</footer>
+
+</body>
+</html>
