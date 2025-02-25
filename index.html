@@ -1,23 +1,107 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giao diện cơ bản</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-size: 2em;
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Giám Sát Chất Lượng Nước</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #f0f2f5;
+    }
+    .card {
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .dashboard-header {
+      background: linear-gradient(135deg, #0d6efd, #00aaff);
+      color: #fff;
+      padding: 20px 0;
+      text-align: center;
+    }
+    .control-btn {
+      font-size: 1.1rem;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .sensor-value {
+      font-size: 2rem;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-    <div>Queo Cum to my chànel</div>
-</body>
-</html>
+
+  <!-- Header -->
+  <header class="dashboard-header mb-4">
+    <h1>Hệ Thống Giám Sát Chất Lượng Nước</h1>
+    <p>Theo tiêu chuẩn Bộ Y Tế &amp; QCVN 01-1:2024/BYT</p>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <div class="row">
+      <!-- Panel Thông Tin Bộ Y Tế & Điều Khiển -->
+      <div class="col-md-4 mb-4">
+        <!-- Thông Tin Bộ Y Tế -->
+        <div class="card mb-4">
+          <div class="card-header bg-info text-white">
+            <strong>Thông Tin Bộ Y Tế</strong>
+          </div>
+          <div class="card-body">
+            <p class="mb-1"><strong>pH:</strong> 6.5 - 8.5</p>
+            <p class="mb-1"><strong>TDS:</strong> &lt; 500 ppm</p>
+            <p class="mb-1"><strong>DO:</strong> &gt; 5 mg/L</p>
+            <p class="mb-1"><strong>Độ đục:</strong> &lt; 5 NTU</p>
+            <p class="mb-0"><strong>Nhiệt độ:</strong> Tùy theo mùa</p>
+            <small class="text-muted">Nguồn: QCVN 01-1:2024/BYT</small>
+          </div>
+        </div>
+        <!-- Điều Khiển Hệ Thống -->
+        <div class="card">
+          <div class="card-header bg-secondary text-white">
+            <strong>Điều Khiển Hệ Thống</strong>
+          </div>
+          <div class="card-body">
+            <div class="d-grid gap-3">
+              <button id="btnTestSensor" class="btn btn-success control-btn">Test Cảm Biến</button>
+              <button id="btnStartMeasure" class="btn btn-primary control-btn">Bắt đầu Đo</button>
+              <button id="btnFilter" class="btn btn-warning control-btn">Lọc</button>
+              <button id="btnEmergencyStop" class="btn btn-danger control-btn">Dừng Khẩn</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Panel Thống Kê và Thông Số Cảm Biến -->
+      <div class="col-md-8">
+        <!-- Bản Thống Kê -->
+        <div class="card mb-4">
+          <div class="card-header bg-dark text-white">
+            <strong>Bản Thống Kê</strong>
+          </div>
+          <div class="card-body">
+            <canvas id="statChart"></canvas>
+          </div>
+        </div>
+        <!-- Thông Số Cảm Biến -->
+        <div class="card">
+          <div class="card-header bg-primary text-white">
+            <strong>Thông Số Chất Lượng Nước</strong>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-md-4 mb-3">
+                <h5>Nhiệt Độ</h5>
+                <p id="tempValue" class="sensor-value">-- °C</p>
+              </div>
+              <div class="col-md-4 mb-3">
+                <h5>pH</h5>
+                <p id="phValue" class="sensor-value">--</p>
+              </div>
+              <div class="col-md-4 mb-3">
+                <h5>Độ Đục</h5>
+                <p id="turbidityValue" class="sensor-value">-- NTU</p>
+              </
