@@ -90,11 +90,11 @@
       setInterval(() => {
         const newTemp = Math.random() * 10 + 20; // Giả lập nhiệt độ từ 20 đến 30
         const newPh = Math.random() * 2 + 6; // Giả lập pH từ 6 đến 8
-        const newTDS = Math.random() * 10 + 40; // Giả lập TDS từ 400 đến 500
+        const newTDS = Math.random() * 10 + 40; // Giả lập TDS từ 40 đến 50
         const newTurbidity = Math.random() * 5; // Giả lập độ đục từ 0 đến 5
   
         updateChart(newTemp, newPh, newTDS, newTurbidity);
-      }, 1000);
+      }, 5000);
     };
 </script>  
   <style>
@@ -220,7 +220,7 @@
             <div class="card-header bg-dark text-white">
               <strong>Bản Thống Kê</strong>
             </div>
-            <div class="card-body">
+            <div class="card-body row-mt">
               <canvas id="statChart"></canvas>
               <canvas id="realtimeChart" style="margin-top: 20px;"></canvas> <!-- Biểu đồ thời gian thực -->
             </div>
@@ -255,26 +255,36 @@
     </div>
   </div>
   <footer class="footer mt-4 py-3 text-white" style="background-color: #271756;">
-    <div class="container">
-      <div class="row">
-        
-        <!-- Cột 1: Đề tài -->
-        <div class="col-md-3 text-start">
-          <p class="text-warning-custom fw-bold fs-5 mb-2">Đề tài:</p>
-          <p class="fs-6">Giám sát chất lượng nước</p>
-        </div>
-        <!-- Cột 2: Thực hiện bởi -->
-        <div class="col-md-9 border-start d-flex align-items-center">
-          <!-- <p class="mb-0 fw-bold me-2">Thực hiện bởi:</p> -->
-          <p class="mb-0">
-            <!-- <small> -->
-              Lê Minh Phúc - MSSV: 6351030056 |  
-              Lê Thanh Vương - MSSV: 6351030057 |  
-              Trần Hoàng Nghĩa - MSSV: 6351030058 |  
-              Nguyễn Huy Hậu - MSSV: 6351030059
-            <!-- </small> -->
-          </p>
-        </div>
-      </div>
-    </div>
-  </footer>
+    <footer class="footer mt-4 py-3 text-white" style="background-color: #271756;">
+       <div class="container">
+         <div class="row">
+          <div class="col-md-3 text-start">
+             <p class="text-warning-custom fw-bold fs-5 mb-2">Đề tài:</p>
+             <p class="fs-">Giám sát chất lượng nước</p>
+           </div>
+           <!-- Cột 2: Thực hiện bởi -->
+             <div class="col-md-3 border-start">
+             <p class="text-warning-custom fw-bold fs-5 mb-2">Thực hiện bởi:</p>
+             <p class="fs-6 mb-1">Lê Minh Phúc</p>
+             <p class="fs-6 mb-1">Lê Thanh Vương</p>
+             <p class="fs-6 mb-1">Trần Hoàng Nghĩa</p>
+             <p class="fs-6 mb-0">Nguyễn Huy Hậu</p>
+           </div>
+     
+           <!-- Cột 3: MSSV -->
+           <div class="col-md-3 border-start">
+             <p class="text-warning-custom fw-bold fs-5 mb-2">Mã số sinh viên:</p>
+             <p class="fs-6 mb-1">6351030056</p>
+             <p class="fs-6 mb-1">6351030086</p>
+             <p class="fs-6 mb-1">6351030047</p>
+             <p class="fs-6 mb-0">6351030056</p>
+           </div>
+           <!-- Cột 4: GVHD -->
+           <div class="col-md-3 border-start">
+             <p class="text-warning-custom fw-bold fs-5 mb-2">Giảng viên hướng dẫn:</p>
+             <p class="fs-6 mb-1">Th.S Ngô Thị Thu Hương</p>
+             <p class="fs-6 mb-0">K.S Mai Vạn Hậu</p>
+           </div>
+       </div>
+     </footer>
+    </footer>
