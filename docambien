@@ -1,0 +1,10 @@
+document.getElementById("btnStartMeasure").addEventListener("click", function() {
+    fetch("http://192.168.1.100/read_sensor")
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById("tempValue").innerText = data.temp;
+            document.getElementById("phValue").innerText = data.ph;
+            document.getElementById("tdsValue").innerText = data.tds;
+        })
+        .catch(error => console.error("Lỗi:", error));
+});
