@@ -7,96 +7,7 @@
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <script>
-    window.onload = function() {
-      // Dữ liệu cho biểu đồ
-      const labels = [];
-      const tempData = [];
-      const phData = [];
-      const tdsData = [];
-      const turbidityData = [];
-  
-      const ctx = document.getElementById('realtimeChart').getContext('2d');
-      const realtimeChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Nhiệt Độ (°C)',
-              borderColor: 'red',
-              data: tempData,
-              fill: false,
-            },
-            {
-              label: 'pH',
-              borderColor: 'blue',
-              data: phData,
-              fill: false,
-            },
-            {
-              label: 'TDS (PPM)',
-              borderColor: 'green',
-              data: tdsData,
-              fill: false,
-            },
-            {
-              label: 'Độ Đục (NTU)',
-              borderColor: 'orange',
-              data: turbidityData,
-              fill: false,
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: {
-              type: 'category',
-              position: 'bottom'
-            },
-            y: {
-              beginAtZero: true
-            }
-          }
-        }
-      });
-  
-      // Hàm cập nhật dữ liệu cho biểu đồ
-      function updateChart(newTemp, newPh, newTDS, newTurbidity) {
-        const now = new Date().toLocaleTimeString();
-  
-        labels.push(now);
-        tempData.push(newTemp);
-        phData.push(newPh);
-        tdsData.push(newTDS);
-        turbidityData.push(newTurbidity);
-  
-        // Giới hạn số lượng điểm trên biểu đồ
-        if (labels.length > 100000) {
-          labels.shift();
-          tempData.shift();
-          phData.shift();
-          tdsData.shift();
-          turbidityData.shift();
-        }
-  
-        realtimeChart.update();
-      }
-  
-      // Giả lập dữ liệu và cập nhật mỗi giây
-      setInterval(() => {
-        const newTemp = Math.random() * 10 + 20; // Giả lập nhiệt độ từ 20 đến 30
-        const newPh = Math.random() * 2 + 6; // Giả lập pH từ 6 đến 8
-        const newTDS = Math.random() * 10 + 40; // Giả lập TDS từ 40 đến 50
-        const newTurbidity = Math.random() * 5; // Giả lập độ đục từ 0 đến 5
-  
-        updateChart(newTemp, newPh, newTDS, newTurbidity);
-      }, 5000);
-    };
-</script>  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  
   <style>
     body {
         display: flex;
@@ -286,5 +197,8 @@
              <p class="fs-6 mb-0">K.S Mai Vạn Hậu</p>
            </div>
        </div>
+       <script src="stop.js"></script>
+        <script src="test.js"></script>
+       <script src="measure.js"></script>
      </footer>
     </footer>
