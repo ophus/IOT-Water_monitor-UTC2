@@ -255,6 +255,18 @@
 
        <script>
         //const esp32_ip = "http://192.168.1.116";  // Cập nhật địa chỉ IP ESP32
+           
+         // Dữ liệu giả lập để test
+ const sampleData = {
+   labels: ["10s", "20s", "30s", "40s", "50s"],
+   datasets: [{
+       label: "Giá trị",
+       data: [7, 6.8, 7.2, 6.9, 7.1],
+       borderColor: "blue",
+       backgroundColor: "rgba(0, 0, 255, 0.2)",
+       borderWidth: 2
+   }]
+ };
 // Hàm tạo biểu đồ
 function createChart(canvasId, label, borderColor, bgColor) {
   const ctx = document.getElementById(canvasId).getContext("2d");
