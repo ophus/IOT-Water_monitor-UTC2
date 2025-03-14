@@ -1,17 +1,22 @@
 async function getData() {
-    const response = await fetch("https://esp32-data-receiver.phucminh9395.workers.dev/", {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        mode: "cors", // Quan trọng để tránh lỗi CORS
-    });
+    try {
+        const response = await fetch("https://esp32-data-receiver.phucminh9395.workers.dev/", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            mode: "cors", // Bật CORS
+        });
 
-    const data = await response.json();
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
-    document.getElementById("tempValue").innerText = `${data.temperature} °C`;
-    document.getElementById("phValue").innerText = `${data.ph}`;
-    document.getElementById("TDSValue").innerText = `${data.tds} PPM`;
+        const data = await response.json();
+        console.log("Received data:", data);
+
+        document.getElementById("tempValue").innerText = `${data.message}`;
+    } catch (error) {
+        console.error("Fetch error:", error);
+    }
 }
 
 setInterval(getData, 5000);
