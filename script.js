@@ -18,5 +18,4 @@ async function getData() {
         console.error("Fetch error:", error);
     }
 }
-
 setInterval(getData, 5000);
