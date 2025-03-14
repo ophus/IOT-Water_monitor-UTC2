@@ -1,0 +1,70 @@
+#define pHpin 34  // Chân cảm biến pH
+
+float Voltage, pHValue;
+const float VREF = 3.3; // Điện áp tham chiếu ESP32
+int ADC_cal = 1700;  // Giá trị ADC khi pH = 6.86
+const float pH_Ref = 6.86; // Giá trị pH tham chiếu
+float Slope = -5.00; // Giá trị Slope có thể điều chỉnh
+
+const int SCOUNT = 10;  // Số lần lấy mẫu để lọc trung vị
+int buffer[SCOUNT];  // Bộ đệm lưu giá trị ADC
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println("Nhập giá trị Slope mới qua Serial Monitor (ví dụ: S-5.80)");
+}
+
+// Hàm lọc trung vị (Median Filter)
+int getMedian(int arr[], int size) {
+    int temp[size];
+    for (int i = 0; i < size; i++) temp[i] = arr[i];
+
+    for (int i = 0; i < size - 1; i++) {
+        for (int j = 0; j < size - i - 1; j++) {
+            if (temp[j] > temp[j + 1]) {
+                int swap = temp[j];
+                temp[j] = temp[j + 1];
+                temp[j + 1] = swap;
+            }
+        }
+    }
+    return temp[size / 2];
+}
+
+void loop() {
+    // Lấy 30 mẫu ADC để lọc trung vị
+    for (int i = 0; i < SCOUNT; i++) {
+        buffer[i] = analogRead(pHpin);
+        delay(10);  // Delay nhỏ để tránh nhiễu
+    }
+
+    int rawADC = getMedian(buffer, SCOUNT);  // Lọc giá trị ADC bằng trung vị
+    Voltage = (rawADC / 4095.0) * VREF;  // Chuyển đổi ADC sang Volt
+
+    // Tính toán pH theo đường tuyến tính
+    pHValue = Slope * (Voltage - (ADC_cal / 4095.0 * VREF)) + pH_Ref;
+
+    Serial.println("=========================");
+    Serial.print("Raw ADC: "); Serial.println(rawADC);
+    Serial.print("Voltage (V): "); Serial.println(Voltage, 3);
+    Serial.print("pH Value: "); Serial.println(pHValue, 2);
+    Serial.print("Current Slope: "); Serial.println(Slope, 2);
+    Serial.println("=========================");
+
+    // Kiểm tra nếu có dữ liệu nhập từ Serial
+    if (Serial.available()) {
+        String input = Serial.readStringUntil('\n');  // Đọc chuỗi nhập vào
+        input.trim();  // Loại bỏ khoảng trắng
+        if (input.startsWith("S")) {  // Kiểm tra nếu nhập "S-5.70"
+            Slope = input.substring(1).toFloat();  // Cập nhật Slope
+            Serial.print("Slope đã cập nhật: ");
+            Serial.println(Slope);
+        }
+        if (input.startsWith("A")){
+            ADC_cal = input.substring(1).toFloat();
+            Serial.print("ADC_cal đã cập nhật: ");
+            Serial.println(ADC_cal);
+        }
+    }
+    delay(1000);
+}
