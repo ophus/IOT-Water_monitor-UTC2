@@ -24,7 +24,7 @@
 
 const char* apSSID = "ESP32_Config";
 const char* apPassword = "12345678";
-const char* serverUrl = "https://red-darkness-9f46.phucminh9395.workers.dev";
+const char* serverUrl = "https://esp32-data-receiver.phucminh9395.workers.dev";
 
 WebServer server(80);
 Preferences preferences;
