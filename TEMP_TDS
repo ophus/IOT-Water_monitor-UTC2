@@ -1,0 +1,80 @@
+#include <math.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+#define TdsSensorPin 33  // Chân cảm biến TDS
+#define TempSensorPin 32 // Chân cảm biến nhiệt độ DS18B20
+#define VREF 3.3         // Điện áp tham chiếu ADC
+#define SCOUNT 15        // Số mẫu lấy trung bình
+
+int analogBuffer[SCOUNT]; // Bộ đệm lưu giá trị ADC
+int analogBufferIndex = 0;
+float voltage = 0, tdsValue = 0;
+
+// Khai báo thư viện OneWire & DallasTemperature
+OneWire oneWire(TempSensorPin);
+DallasTemperature sensors(&oneWire);
+
+void setup() {
+    Serial.begin(115200);
+    pinMode(TdsSensorPin, INPUT);
+    sensors.begin();  // Khởi động cảm biến nhiệt độ
+}
+
+void loop() {
+    // Đọc nhiệt độ từ DS18B20
+    sensors.requestTemperatures();
+    float temperature = sensors.getTempCByIndex(0); // Đọc nhiệt độ (°C)
+
+    // Lưu giá trị ADC vào bộ đệm
+    analogBuffer[analogBufferIndex] = analogRead(TdsSensorPin);
+    analogBufferIndex++;
+    if (analogBufferIndex == SCOUNT) analogBufferIndex = 0;
+
+    // Lọc giá trị ADC bằng thuật toán trung vị
+    int filteredADC = getMedianNum(analogBuffer, SCOUNT);
+
+    // Chuyển đổi ADC sang Volt
+    voltage = (filteredADC / 4095.0) * VREF;
+
+    // Tính TDS trước hiệu chỉnh
+    float tdsRaw = 973 * voltage; // Hệ số hiệu chỉnh ban đầu
+
+    // Hiệu chỉnh TDS theo nhiệt độ
+    float tdsValue = tdsRaw / (1.0 + 0.02 * (temperature - 25)); // Công thức bù nhiệt
+
+    // Hiển thị kết quả
+    Serial.println("=========================");
+    Serial.print("Temperature (°C): "); Serial.println(temperature, 1);
+    Serial.print("Raw ADC Value: "); Serial.println(filteredADC);
+    Serial.print("Voltage (V): "); Serial.println(voltage, 3);
+    Serial.print("TDS Value (ppm): "); Serial.println(tdsValue, 1);
+    Serial.println("=========================\n");
+
+    delay(1000);
+}
+
+// Hàm lọc trung vị (Median Filter)
+int getMedianNum(int bArray[], int iFilterLen) {
+    int bTab[iFilterLen];
+    for (byte i = 0; i < iFilterLen; i++)
+        bTab[i] = bArray[i];
+
+    int i, j, bTemp;
+    for (j = 0; j < iFilterLen - 1; j++) {
+        for (i = 0; i < iFilterLen - j - 1; i++) {
+            if (bTab[i] > bTab[i + 1]) {
+                bTemp = bTab[i];
+                bTab[i] = bTab[i + 1];
+                bTab[i + 1] = bTemp;
+            }
+        }
+    }
+
+    if ((iFilterLen & 1) > 0)
+        bTemp = bTab[(iFilterLen - 1) / 2];
+    else
+        bTemp = (bTab[iFilterLen / 2] + bTab[iFilterLen / 2 - 1]) / 2;
+
+    return bTemp;
+}
