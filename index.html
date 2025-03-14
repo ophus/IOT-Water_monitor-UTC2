@@ -256,38 +256,85 @@
        <script>
         //const esp32_ip = "http://192.168.1.116";  // Cập nhật địa chỉ IP ESP32
            
-         // Dữ liệu giả lập để test
- const sampleData = {
-   labels: ["10s", "20s", "30s", "40s", "50s"],
-   datasets: [{
-       label: "Giá trị",
-       data: [7, 6.8, 7.2, 6.9, 7.1],
-       borderColor: "blue",
-       backgroundColor: "rgba(0, 0, 255, 0.2)",
-       borderWidth: 2
-   }]
- };
-// Hàm tạo biểu đồ
+ 
+// Tạo các biểu đồ
+const tempChart = createChart("tempChart", "Nhiệt độ (°C)", "red", "rgba(255, 0, 0, 0.2)");
+const phChart = createChart("phChart", "pH", "blue", "rgba(0, 0, 255, 0.2)");
+const tdsChart = createChart("tdsChart", "TDS (ppm)", "orange", "rgba(255, 165, 0, 0.2)");
+const turbidityChart = createChart("turbidityChart", "Độ đục (NTU)", "green", "rgba(0, 255, 0, 0.2)");
+
 function createChart(canvasId, label, borderColor, bgColor) {
-  const ctx = document.getElementById(canvasId).getContext("2d");
-  new Chart(ctx, {
-      type: "line",
-      data: {
-          labels: sampleData.labels,
-          datasets: [{
-              label: label,
-              data: sampleData.datasets[0].data,
-              borderColor: borderColor,
-              backgroundColor: bgColor,
-              borderWidth: 2
-          }]
-      },
-      options: {
-          responsive: true,
-          maintainAspectRatio: false
-      }
-  });
+    const ctx = document.getElementById(canvasId).getContext("2d");
+    return new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: borderColor,
+                backgroundColor: bgColor,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { display: true },
+                y: { display: true }
+            }
+        }
+    });
 }
+
+// Lấy dữ liệu từ ESP32 và cập nhật giao diện
+async function getData() {
+    try {
+        const response = await fetch(`${esp32_ip}/get_data`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" }
+        });
+
+        if (!response.ok) throw new Error(`Lỗi HTTP: ${response.status}`);
+
+        const data = await response.json();
+        console.log("Dữ liệu nhận được:", data);
+
+        // Cập nhật số liệu trên giao diện
+        document.getElementById("tempValue").innerText = `${data.temperature} °C`;
+        document.getElementById("phValue").innerText = `${data.ph}`;
+        document.getElementById("tdsValue").innerText = `${data.tds} PPM`;
+        document.getElementById("turbidityValue").innerText = `${data.turbidity} NTU`;
+
+        // Thêm thời gian vào trục x
+        const now = new Date().toLocaleTimeString();
+        updateChart(tempChart, now, data.temperature);
+        updateChart(phChart, now, data.ph);
+        updateChart(tdsChart, now, data.tds);
+        updateChart(turbidityChart, now, data.turbidity);
+
+    } catch (error) {
+        console.error("Lỗi lấy dữ liệu:", error);
+    }
+}
+
+// Cập nhật biểu đồ với dữ liệu mới
+function updateChart(chart, label, value) {
+    chart.data.labels.push(label);
+    chart.data.datasets[0].data.push(value);
+
+    // Giữ tối đa 10 điểm dữ liệu trên biểu đồ
+    if (chart.data.labels.length > 10) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+
+    chart.update();
+}
+
+// Cập nhật dữ liệu mỗi 1 giây
+setInterval(getData, 1000);
 
 // Gọi hàm vẽ 4 biểu đồ
 createChart("tempChart", "Nhiệt độ (°C)", "red", "rgba(255, 0, 0, 0.2)");
