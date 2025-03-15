@@ -1,7 +1,7 @@
 async function getData() {
     try {
         const response = await fetch("https://esp32-data-receiver.phucminh9395.workers.dev/", {
-            method: "GET",
+            method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
