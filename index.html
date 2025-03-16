@@ -270,49 +270,49 @@
     </footer>
 
     <script>
-        const esp32_ip = "https://esp32-data-receiver.phucminh9395.workers.dev";  // Cập nhật địa chỉ IP ESP32
-let isMeasuring = false; 
+         const esp32_ip = "https://esp32-data-receiver.phucminh9395.workers.dev";  // Cập nhật địa chỉ IP ESP32
+    let isMeasuring = false; 
 
-// Gửi yêu cầu bắt đầu đo
-document.getElementById("btnStartMeasure").addEventListener("click", async function () {
-    try {
-        const response = await fetch(`${esp32_ip}/start_measure`);
-        const data = await response.json();
-        console.log("Bắt đầu đo:", data.message);
-        isMeasuring = true;
-    } catch (error) {
-        console.error("Lỗi khi gửi yêu cầu bắt đầu đo:", error);
-    }
-});
+    // Gửi yêu cầu bắt đầu đo
+    document.getElementById("btnStartMeasure").addEventListener("click", async function () {
+        try {
+            const response = await fetch(`${esp32_ip}/start_measure`);  // Sửa lỗi template string
+            const data = await response.json();
+            console.log("Bắt đầu đo:", data.message);
+            isMeasuring = true;
+        } catch (error) {
+            console.error("Lỗi khi gửi yêu cầu bắt đầu đo:", error);
+        }
+    });
 
-// Gửi yêu cầu dừng đo
-document.getElementById("btnEmergencyStop").addEventListener("click", async function () {
-    try {
-        const response = await fetch(`${esp32_ip}/stop_measure`);
-        const data = await response.json();
-        console.log("Dừng đo:", data.message);
-        isMeasuring = false;
-    } catch (error) {
-        console.error("Lỗi khi gửi yêu cầu dừng đo:", error);
-    }
-});
+    // Gửi yêu cầu dừng đo
+    document.getElementById("btnEmergencyStop").addEventListener("click", async function () {
+        try {
+            const response = await fetch(`${esp32_ip}/stop_measure`);  // Sửa lỗi template string
+            const data = await response.json();
+            console.log("Dừng đo:", data.message);
+            isMeasuring = false;
+        } catch (error) {
+            console.error("Lỗi khi gửi yêu cầu dừng đo:", error);
+        }
+    });
 
-// Kiểm tra trạng thái cảm biến
-document.getElementById("btnTestSensor").addEventListener("click", async function () {
-    try {
-        const response = await fetch(`${esp32_ip}/check_sensors`);
-        const data = await response.json();
-        console.log("Trạng thái cảm biến:", data);
-        
-        updateSensorStatus("tempStatus", data.temperature);
-        updateSensorStatus("phStatus", data.ph);
-        updateSensorStatus("tdsStatus", data.tds);
-        updateSensorStatus("turbidityStatus", data.turbidity);
-    } catch (error) {
-        console.error("Lỗi kiểm tra cảm biến:", error);
-    }
-});
-
+    // Kiểm tra trạng thái cảm biến
+    document.getElementById("btnTestSensor").addEventListener("click", async function () {
+        try {
+            const response = await fetch(`${esp32_ip}/check_sensors`);  // Sửa lỗi template string
+            const data = await response.json();
+            console.log("Trạng thái cảm biến:", data);
+            
+            // Cập nhật giao diện với dữ liệu nhận được
+            document.getElementById("tempStatus").textContent = data.temperature || "--";
+            document.getElementById("phStatus").textContent = data.ph || "--";
+            document.getElementById("turbidityStatus").textContent = data.turbidity || "--";
+            document.getElementById("tdsStatus").textContent = data.tds || "--";
+        } catch (error) {
+            console.error("Lỗi khi gửi yêu cầu kiểm tra cảm biến:", error);
+        }
+    });
 // Cập nhật trạng thái cảm biến
 function updateSensorStatus(elementId, status) {
     let element = document.getElementById(elementId);
