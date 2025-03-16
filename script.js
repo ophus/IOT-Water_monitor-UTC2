@@ -1,16 +1,18 @@
 async function getData() {
     try {
         const response = await fetch("https://esp32-data-receiver.phucminh9395.workers.dev/", {
-            method: "GET", // Đổi thành GET nếu API không cần POST
+            method: "GET",
             headers: {
                 "Content-Type": "application/json",
-                "Accept": "application/json" // Đảm bảo server phản hồi JSON
+                "Accept": "application/json"
             },
-            mode: "cors", // Kích hoạt CORS
-            cache: "no-cache" // Tránh cache dữ liệu cũ
+            mode: "cors",
+            cache: "no-cache"
         });
 
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
 
         let data;
         try {
@@ -21,21 +23,29 @@ async function getData() {
 
         console.log("📥 Received data:", data);
 
-        // Kiểm tra dữ liệu hợp lệ trước khi cập nhật UI
-        if (data && typeof data === "object") {
-            updateElement("tempValue", `${data.temperature || "N/A"} °C`);
-            updateElement("phValue", `${data.ph || "N/A"}`);
-            updateElement("tdsValue", `${data.tds || "N/A"} PPM`);
-            updateElement("turbidityValue", `${data.turbidity || "N/A"} NTU`);
-        } else {
-            console.warn("⚠️ Dữ liệu không hợp lệ:", data);
+        if (data.error) {
+            console.warn(`⚠️ Lỗi từ server: ${data.error}`);
+            showNoData();
+            return;
         }
+
+        // Kiểm tra nếu tất cả giá trị đều bằng 0 -> ESP32 mất nguồn
+        if (data.temperature == 0 && data.ph == 0 && data.tds == 0 && data.turbidity == 0) {
+            console.warn("⚠️ ESP32 có thể đã tắt nguồn! Đang hiển thị 'Không có dữ liệu'");
+            showNoData();
+            return;
+        }
+
+        updateElement("tempValue", `${data.temperature ?? "N/A"} °C`);
+        updateElement("phValue", `${data.ph ?? "N/A"}`);
+        updateElement("tdsValue", `${data.tds ?? "N/A"} PPM`);
+        updateElement("turbidityValue", `${data.turbidity ?? "N/A"} NTU`);
     } catch (error) {
         console.error("❌ Fetch error:", error);
+        showNoData();
     }
 }
 
-// Hàm cập nhật phần tử an toàn
 function updateElement(id, value) {
     const el = document.getElementById(id);
     if (el) {
@@ -45,5 +55,11 @@ function updateElement(id, value) {
     }
 }
 
-// Lấy dữ liệu mỗi 5 giây
+function showNoData() {
+    updateElement("tempValue", "-- °C");
+    updateElement("phValue", "--");
+    updateElement("tdsValue", "-- PPM");
+    updateElement("turbidityValue", "-- NTU");
+}
+
 setInterval(getData, 5000);
