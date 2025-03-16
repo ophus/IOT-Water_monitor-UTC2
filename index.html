@@ -270,67 +270,90 @@
     </footer>
 
     <script>
-         const esp32_ip = "https://esp32-data-receiver.phucminh9395.workers.dev";  // Cập nhật địa chỉ IP ESP32
-    let isMeasuring = false; 
+       const worker_url = "https://esp32-data-receiver.phucminh9395.workers.dev";
+let esp32_ip = null; // Lưu IP của ESP32
 
-    // Gửi yêu cầu bắt đầu đo
-    document.getElementById("btnStartMeasure").addEventListener("click", async function () {
-        try {
-            const response = await fetch(`${esp32_ip}/start_measure`);  // Sửa lỗi template string
-            const data = await response.json();
-            console.log("Bắt đầu đo:", data.message);
-            isMeasuring = true;
-        } catch (error) {
-            console.error("Lỗi khi gửi yêu cầu bắt đầu đo:", error);
-        }
-    });
-
-    // Gửi yêu cầu dừng đo
-    document.getElementById("btnEmergencyStop").addEventListener("click", async function () {
-        try {
-            const response = await fetch(`${esp32_ip}/stop_measure`);  // Sửa lỗi template string
-            const data = await response.json();
-            console.log("Dừng đo:", data.message);
-            isMeasuring = false;
-        } catch (error) {
-            console.error("Lỗi khi gửi yêu cầu dừng đo:", error);
-        }
-    });
-
-    // Kiểm tra trạng thái cảm biến
-    document.getElementById("btnTestSensor").addEventListener("click", async function () {
-        try {
-            const response = await fetch(`${esp32_ip}/check_sensors`);  // Sửa lỗi template string
-            const data = await response.json();
-            console.log("Trạng thái cảm biến:", data);
-            
-            // Cập nhật giao diện với dữ liệu nhận được
-            document.getElementById("tempStatus").textContent = data.temperature || "--";
-            document.getElementById("phStatus").textContent = data.ph || "--";
-            document.getElementById("turbidityStatus").textContent = data.turbidity || "--";
-            document.getElementById("tdsStatus").textContent = data.tds || "--";
-        } catch (error) {
-            console.error("Lỗi khi gửi yêu cầu kiểm tra cảm biến:", error);
-        }
-    });
-// Cập nhật trạng thái cảm biến
-function updateSensorStatus(elementId, status) {
-    let element = document.getElementById(elementId);
-    if (status === "Connect") {
-        element.innerText = "Connect";
-        element.style.color = "green";
-    } else {
-        element.innerText = "Disconnect";
-        element.style.color = "red";
+// 🟢 Lấy IP ESP32 từ Worker trước khi gửi lệnh
+async function fetchESP32IP() {
+    try {
+        const response = await fetch(`${worker_url}/get_ip`);
+        const data = await response.json();
+        esp32_ip = data.ip;
+        console.log("📡 ESP32 IP từ Worker:", esp32_ip);
+    } catch (error) {
+        console.error("❌ Lỗi khi lấy IP ESP32:", error);
     }
 }
-// Biểu đồ cảm biến
-const tempChart = createChart("tempChart", "Nhiệt độ (°C)", "red", "rgba(255, 0, 0, 0.2)");
-const phChart = createChart("phChart", "pH", "blue", "rgba(0, 0, 255, 0.2)");
-const tdsChart = createChart("tdsChart", "TDS (ppm)", "orange", "rgba(255, 165, 0, 0.2)");
-const turbidityChart = createChart("turbidityChart", "Độ đục (NTU)", "green", "rgba(0, 255, 0, 0.2)");
 
-// Hàm tạo biểu đồ
+// 🟢 Gửi lệnh đến ESP32 thông qua Worker
+async function sendCommand(command) {
+    if (!esp32_ip) await fetchESP32IP(); // Đảm bảo lấy IP trước khi gửi lệnh
+
+    try {
+        const response = await fetch(`${worker_url}/${command}`);
+        const data = await response.json();
+        console.log(`✅ Lệnh ${command} đã gửi:`, data.message);
+    } catch (error) {
+        console.error(`❌ Lỗi khi gửi lệnh ${command}:`, error);
+    }
+}
+
+// 🖱 Kết nối sự kiện nút điều khiển
+document.getElementById("btnStartMeasure").addEventListener("click", () => sendCommand("start_measure"));
+document.getElementById("btnEmergencyStop").addEventListener("click", () => sendCommand("stop_measure"));
+document.getElementById("btnTestSensor").addEventListener("click", () => sendCommand("check_sensors"));
+
+// 🟢 Lấy dữ liệu từ Worker
+async function getData() {
+    try {
+        const response = await fetch(`${worker_url}/get_data`);
+        const data = await response.json();
+        console.log("📊 Dữ liệu nhận được:", data);
+
+        // Cập nhật số liệu trên giao diện
+        updateElement("tempValue", `${data.temperature || "--"} °C`);
+        updateElement("phValue", `${data.ph || "--"}`);
+        updateElement("tdsValue", `${data.tds || "--"} PPM`);
+        updateElement("turbidityValue", `${data.turbidity || "--"} NTU`);
+
+        // Cập nhật trạng thái cảm biến
+        updateElement("tempStatus", data.temperature !== undefined ? "✔" : "❌");
+        updateElement("phStatus", data.ph !== undefined ? "✔" : "❌");
+        updateElement("tdsStatus", data.tds !== undefined ? "✔" : "❌");
+        updateElement("turbidityStatus", data.turbidity !== undefined ? "✔" : "❌");
+
+        // Cập nhật biểu đồ
+        const now = new Date().toLocaleTimeString();
+        updateChart(tempChart, now, data.temperature);
+        updateChart(phChart, now, data.ph);
+        updateChart(tdsChart, now, data.tds);
+        updateChart(turbidityChart, now, data.turbidity);
+
+    } catch (error) {
+        console.error("❌ Lỗi lấy dữ liệu từ Worker:", error);
+    }
+}
+
+// 🟢 Cập nhật trạng thái cảm biến
+function updateElement(id, value) {
+    let el = document.getElementById(id);
+    if (el) el.innerText = value;
+}
+
+// 🟢 Cập nhật biểu đồ cảm biến
+function updateChart(chart, label, value) {
+    if (!chart) return;
+    chart.data.labels.push(label);
+    chart.data.datasets[0].data.push(value);
+
+    if (chart.data.labels.length > 10) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+    chart.update();
+}
+
+// 🟢 Hàm tạo biểu đồ
 function createChart(canvasId, label, borderColor, bgColor) {
     const ctx = document.getElementById(canvasId).getContext("2d");
     return new Chart(ctx, {
@@ -343,69 +366,34 @@ function createChart(canvasId, label, borderColor, bgColor) {
                 borderColor: borderColor,
                 backgroundColor: bgColor,
                 borderWidth: 2,
-                tension: 0.4, // Làm mượt đường biểu đồ
+                tension: 0.4,
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: {
-                x: { display: true },
-                y: { display: true }
-            }
+            scales: { x: { display: true }, y: { display: true } }
         }
     });
 }
 
-// Lấy dữ liệu từ ESP32 và cập nhật giao diện + biểu đồ
-async function getData() {
-    if (!isMeasuring) return;
+// 🟢 Khởi tạo biểu đồ
+const tempChart = createChart("tempChart", "Nhiệt độ (°C)", "red", "rgba(255, 0, 0, 0.2)");
+const phChart = createChart("phChart", "pH", "blue", "rgba(0, 0, 255, 0.2)");
+const tdsChart = createChart("tdsChart", "TDS (ppm)", "orange", "rgba(255, 165, 0, 0.2)");
+const turbidityChart = createChart("turbidityChart", "Độ đục (NTU)", "green", "rgba(0, 255, 0, 0.2)");
 
-    try {
-        const response = await fetch(`${esp32_ip}/get_data`);
-        const data = await response.json();
-        console.log("📊 Dữ liệu nhận được:", data);
-
-        // Cập nhật số liệu trên giao diện
-        updateElement("tempValue", `${data.temperature} °C`);
-        updateElement("phValue", `${data.ph}`);
-        updateElement("tdsValue", `${data.tds} PPM`);
-        updateElement("turbidityValue", `${data.turbidity} NTU`);
-
-        // Cập nhật biểu đồ với thời gian thực
-        const now = new Date().toLocaleTimeString();
-        updateChart(tempChart, now, data.temperature);
-        updateChart(phChart, now, data.ph);
-        updateChart(tdsChart, now, data.tds);
-        updateChart(turbidityChart, now, data.turbidity);
-
-    } catch (error) {
-        console.error("❌ Lỗi lấy dữ liệu từ ESP32:", error);
-    }
-}
-
-// Hàm cập nhật dữ liệu biểu đồ
-function updateChart(chart, label, value) {
-    chart.data.labels.push(label);
-    chart.data.datasets[0].data.push(value);
-
-    // Giữ tối đa 10 điểm dữ liệu
-    if (chart.data.labels.length > 10) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-    }
-
-    chart.update();
-}
-
-// Hàm cập nhật phần tử giao diện an toàn
-function updateElement(id, value) {
-    let el = document.getElementById(id);
-    if (el) el.innerText = value;
-}
-
-// Lấy dữ liệu mỗi 2 giây
+// 🟢 Lấy dữ liệu mỗi 2 giây
 setInterval(getData, 2000);
+
+// 🟢 Lấy IP ESP32 mỗi 10 giây để đảm bảo luôn có IP đúng
+setInterval(fetchESP32IP, 10000);
+
+// 🟢 Lấy IP ngay khi trang tải xong
+fetchESP32IP();
+
+
+
         </script>
 
   </footer>
