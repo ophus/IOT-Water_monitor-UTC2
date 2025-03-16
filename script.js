@@ -1,37 +1,49 @@
 async function getData() {
     try {
-        const response = await fetch("https://esp32-data-receiver.phucminh9395.workers.dev/");
-        const data = await response.json();
+        const response = await fetch("https://esp32-data-receiver.phucminh9395.workers.dev/", {
+            method: "GET", // Đổi thành GET nếu API không cần POST
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json" // Đảm bảo server phản hồi JSON
+            },
+            mode: "cors", // Kích hoạt CORS
+            cache: "no-cache" // Tránh cache dữ liệu cũ
+        });
 
-        if (data.error) {
-            console.warn(`⚠️ Lỗi từ server: ${data.error}`);
-            showZeroData();
-            return;
+        if (!response.ok) throw new Error(HTTP error! Status: ${response.status});
+
+        let data;
+        try {
+            data = await response.json();
+        } catch (jsonError) {
+            throw new Error("Lỗi khi phân tích JSON: " + jsonError.message);
         }
 
-        // 🔵 Nếu tất cả giá trị là 0 → Hiển thị 0 thay vì "ESP32 mất nguồn"
-        if (data.temperature == 0 && data.ph == 0 && data.tds == 0 && data.turbidity == 0) {
-            console.warn("⚠️ ESP32 mất nguồn!");
-            showZeroData();
-            return;
-        }
+        console.log("📥 Received data:", data);
 
-        updateElement("tempValue", `${data.temperature} °C`);
-        updateElement("phValue", `${data.ph}`);
-        updateElement("tdsValue", `${data.tds} PPM`);
-        updateElement("turbidityValue", `${data.turbidity} NTU`);
+        // Kiểm tra dữ liệu hợp lệ trước khi cập nhật UI
+        if (data && typeof data === "object") {
+            updateElement("tempValue", ${data.temperature || "N/A"} °C);
+            updateElement("phValue", ${data.ph || "N/A"});
+            updateElement("tdsValue", ${data.tds || "N/A"} PPM);
+            updateElement("turbidityValue", ${data.turbidity || "N/A"} NTU);
+        } else {
+            console.warn("⚠️ Dữ liệu không hợp lệ:", data);
+        }
     } catch (error) {
         console.error("❌ Fetch error:", error);
-        showZeroData();
     }
 }
 
-// 🔴 Khi mất kết nối hoặc ESP32 mất nguồn, hiển thị số 0
-function showZeroData() {
-    updateElement("tempValue", "0 °C");
-    updateElement("phValue", "0");
-    updateElement("tdsValue", "0 PPM");
-    updateElement("turbidityValue", "0 NTU");
+// Hàm cập nhật phần tử an toàn
+function updateElement(id, value) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.innerText = value;
+    } else {
+        console.warn(⚠️ Không tìm thấy phần tử: ${id});
+    }
 }
 
+// Lấy dữ liệu mỗi 5 giây
 setInterval(getData, 5000);
