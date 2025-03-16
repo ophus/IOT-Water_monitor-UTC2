@@ -5,17 +5,14 @@ async function getData() {
 
         if (data.error) {
             console.warn(`⚠️ Lỗi từ server: ${data.error}`);
-            showNoData();
+            showZeroData();
             return;
         }
 
-        // 🔵 Nếu tất cả giá trị là 0 → Hiển thị mất nguồn
+        // 🔵 Nếu tất cả giá trị là 0 → Hiển thị 0 thay vì "ESP32 mất nguồn"
         if (data.temperature == 0 && data.ph == 0 && data.tds == 0 && data.turbidity == 0) {
             console.warn("⚠️ ESP32 mất nguồn!");
-            updateElement("tempValue", "ESP32 mất nguồn");
-            updateElement("phValue", "ESP32 mất nguồn");
-            updateElement("tdsValue", "ESP32 mất nguồn");
-            updateElement("turbidityValue", "ESP32 mất nguồn");
+            showZeroData();
             return;
         }
 
@@ -25,7 +22,16 @@ async function getData() {
         updateElement("turbidityValue", `${data.turbidity} NTU`);
     } catch (error) {
         console.error("❌ Fetch error:", error);
-        showNoData();
+        showZeroData();
     }
 }
+
+// 🔴 Khi mất kết nối hoặc ESP32 mất nguồn, hiển thị số 0
+function showZeroData() {
+    updateElement("tempValue", "0 °C");
+    updateElement("phValue", "0");
+    updateElement("tdsValue", "0 PPM");
+    updateElement("turbidityValue", "0 NTU");
+}
+
 setInterval(getData, 5000);
