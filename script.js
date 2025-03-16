@@ -1,34 +1,48 @@
 async function getData() {
     try {
         const response = await fetch("https://esp32-data-receiver.phucminh9395.workers.dev/", {
-            method: "POST", // Chuyển thành GET nếu API không cần POST
+            method: "GET", // Đổi thành GET nếu API không cần POST
             headers: {
                 "Content-Type": "application/json",
+                "Accept": "application/json" // Đảm bảo server phản hồi JSON
             },
-            mode: "cors", // Bật CORS
+            mode: "cors", // Kích hoạt CORS
+            cache: "no-cache" // Tránh cache dữ liệu cũ
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+        let data;
+        try {
+            data = await response.json();
+        } catch (jsonError) {
+            throw new Error("Lỗi khi phân tích JSON: " + jsonError.message);
         }
 
-        const data = await response.json();
         console.log("📥 Received data:", data);
 
-        // Kiểm tra xem phần tử có tồn tại trước khi cập nhật
-        updateElement("tempValue", `${data.temperature} °C`);
-        updateElement("phValue", `${data.ph}`);
-        updateElement("tdsValue", `${data.tds} PPM`);
-        updateElement("turbidityValue", `${data.turbidity} NTU`);
+        // Kiểm tra dữ liệu hợp lệ trước khi cập nhật UI
+        if (data && typeof data === "object") {
+            updateElement("tempValue", `${data.temperature || "N/A"} °C`);
+            updateElement("phValue", `${data.ph || "N/A"}`);
+            updateElement("tdsValue", `${data.tds || "N/A"} PPM`);
+            updateElement("turbidityValue", `${data.turbidity || "N/A"} NTU`);
+        } else {
+            console.warn("⚠️ Dữ liệu không hợp lệ:", data);
+        }
     } catch (error) {
         console.error("❌ Fetch error:", error);
     }
 }
 
-// Hàm cập nhật phần tử an toàn, tránh lỗi null
+// Hàm cập nhật phần tử an toàn
 function updateElement(id, value) {
-    let el = document.getElementById(id);
-    if (el) el.innerText = value;
+    const el = document.getElementById(id);
+    if (el) {
+        el.innerText = value;
+    } else {
+        console.warn(`⚠️ Không tìm thấy phần tử: ${id}`);
+    }
 }
 
 // Lấy dữ liệu mỗi 5 giây
