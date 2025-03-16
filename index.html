@@ -270,40 +270,32 @@
     </footer>
 
     <script>
-         
-    const workerUrl = "https://esp32-data-receiver.phucminh9395.workers.dev";
+         const esp32_ip = "https://esp32-data-receiver.phucminh9395.workers.dev";  // Cập nhật địa chỉ IP ESP32
+    let isMeasuring = false; 
 
-// Gửi yêu cầu bắt đầu đo
-document.getElementById("btnStartMeasure").addEventListener("click", async function () {
-    try {
-        const response = await fetch(`${workerUrl}/start_measure`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
-        const data = await response.json();
-        console.log("Bắt đầu đo:", data.message);
-    } catch (error) {
-        console.error("Lỗi khi gửi yêu cầu bắt đầu đo:", error);
-    }
-});
+    // Gửi yêu cầu bắt đầu đo
+    document.getElementById("btnStartMeasure").addEventListener("click", async function () {
+        try {
+            const response = await fetch(`${esp32_ip}/start_measure`);  // Sửa lỗi template string
+            const data = await response.json();
+            console.log("Bắt đầu đo:", data.message);
+            isMeasuring = true;
+        } catch (error) {
+            console.error("Lỗi khi gửi yêu cầu bắt đầu đo:", error);
+        }
+    });
 
-// Gửi yêu cầu dừng đo
-document.getElementById("btnEmergencyStop").addEventListener("click", async function () {
-    try {
-        const response = await fetch(`${workerUrl}/stop_measure`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
-        const data = await response.json();
-        console.log("Dừng đo:", data.message);
-    } catch (error) {
-        console.error("Lỗi khi gửi yêu cầu dừng đo:", error);
-    }
-});
+    // Gửi yêu cầu dừng đo
+    document.getElementById("btnEmergencyStop").addEventListener("click", async function () {
+        try {
+            const response = await fetch(`${esp32_ip}/stop_measure`);  // Sửa lỗi template string
+            const data = await response.json();
+            console.log("Dừng đo:", data.message);
+            isMeasuring = false;
+        } catch (error) {
+            console.error("Lỗi khi gửi yêu cầu dừng đo:", error);
+        }
+    });
 
     // Kiểm tra trạng thái cảm biến
     document.getElementById("btnTestSensor").addEventListener("click", async function () {
