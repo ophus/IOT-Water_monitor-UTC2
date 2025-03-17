@@ -16,7 +16,8 @@ unsigned long lastPollTime = 0;
 unsigned long lastDataSendTime = 0;
 bool sendDataEnabled = false;
 bool continuousMeasurement = false;
-
+#define HEARTBEAT_INTERVAL 5000 // 5 giây
+unsigned long lastHeartbeatTime = 0;
 void sendIPToWorker() {
     if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
@@ -294,18 +295,33 @@ void setup() {
     // Gửi IP hiện tại lên worker
     sendIPToWorker();
 }
-
+void sendHeartbeat() {
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        http.begin(workerUrl + "/heartbeat");
+        http.addHeader("Content-Type", "application/json");
+        int httpResponseCode = http.POST("{}");
+        Serial.print("💓 Heartbeat sent, response code: ");
+        Serial.println(httpResponseCode);
+        http.end();
+    }
+}
 void loop() {
     server.handleClient();
     checkAndUpdateIP();
     
-    // Chỉ thăm dò lệnh sau mỗi khoảng thời gian nhất định
+    // Gửi heartbeat định kỳ
+    if (millis() - lastHeartbeatTime > HEARTBEAT_INTERVAL) {
+        sendHeartbeat();
+        lastHeartbeatTime = millis();
+    }
+    
+    // Phần còn lại của mã không thay đổi...
     if (millis() - lastPollTime > POLL_INTERVAL) {
         pollForCommands();
         lastPollTime = millis();
     }
     
-    // Send sensor data at regular intervals when continuous measurement is enabled
     if (continuousMeasurement && millis() - lastDataSendTime > DATA_SEND_INTERVAL) {
         sendSensorDataToWorker();
         lastDataSendTime = millis();
