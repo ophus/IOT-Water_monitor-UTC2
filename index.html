@@ -270,7 +270,7 @@
     </footer>
 
     <script>
-         const worker_url = "https://esp32-data-receiver.phucminh9395.workers.dev";
+   const worker_url = "https://esp32-data-receiver.phucminh9395.workers.dev";
 let isMeasuring = false;
 
 // Gửi lệnh đến Worker
@@ -279,7 +279,7 @@ async function sendCommand(command) {
         const response = await fetch(`${worker_url}/command`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(command),
+            body: JSON.stringify({ action: command }),
         });
         const data = await response.json();
         console.log(`📤 Lệnh gửi đi: ${command}, Phản hồi:`, data);
@@ -289,27 +289,35 @@ async function sendCommand(command) {
     }
 }
 
-// Gửi lệnh "Đo"
+// Gửi lệnh "Đo liên tục"
 document.getElementById("btnStartMeasure").addEventListener("click", async function () {
     const response = await sendCommand("measure");
-    if (response && response.message === "Measurement started") {
+    if (response && response.success) {
         isMeasuring = true;
+        console.log("Bắt đầu đo liên tục");
     }
 });
 
-// Gửi lệnh "Test"
+// Gửi lệnh "Test" (đo một lần)
 document.getElementById("btnTestSensor").addEventListener("click", async function () {
     const response = await sendCommand("test");
-    if (response && response.message === "Measurement started") {
+    if (response && response.success) {
         isMeasuring = true;
+        // Chỉ lấy dữ liệu một lần sau khi test
+        setTimeout(() => {
+            getData();
+            isMeasuring = false;
+        }, 2000);
+        console.log("Test cảm biến một lần");
     }
 });
 
 // Gửi lệnh "Dừng"
 document.getElementById("btnEmergencyStop").addEventListener("click", async function () {
     const response = await sendCommand("stop");
-    if (response && response.message === "Measurement stopped") {
+    if (response && response.success) {
         isMeasuring = false;
+        console.log("Đã dừng đo");
     }
 });
 
@@ -346,51 +354,83 @@ function createChart(canvasId, label, borderColor, bgColor) {
     });
 }
 
-// Lấy dữ liệu từ ESP32 thông qua Worker và cập nhật giao diện + biểu đồ
+// Lấy dữ liệu từ Worker
 async function getData() {
-    if (!isMeasuring) return;
-
     try {
-        const response = await fetch(`${worker_url}/get_esp32_data`);
-        const data = await response.json();
-        console.log("📊 Dữ liệu nhận được:", data);
-
-        updateElement("tempValue", `${data.temperature} °C`);
-        updateElement("phValue", `${data.ph}`);
-        updateElement("tdsValue", `${data.tds} PPM`);
-        updateElement("turbidityValue", `${data.turbidity} NTU`);
-
-        const now = new Date().toLocaleTimeString();
-        updateChart(tempChart, now, data.temperature);
-        updateChart(phChart, now, data.ph);
-        updateChart(tdsChart, now, data.tds);
-        updateChart(turbidityChart, now, data.turbidity);
+        const response = await fetch(`${worker_url}/get_latest_sensor_data`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const data = result.data;
+            console.log("📊 Dữ liệu nhận được:", data);
+            
+            // Cập nhật giao diện
+            updateElement("tempValue", `${data.temperature} °C`);
+            updateElement("phValue", `${data.ph}`);
+            updateElement("TDSValue", `${data.tds} PPM`);
+            updateElement("turbidityValue", `${data.turbidity} NTU`);
+            
+            // Cập nhật trạng thái
+            updateElement("tempStatus", getStatusText(data.temperature, 20, 30));
+            updateElement("phStatus", getStatusText(data.ph, 6.5, 8.5));
+            updateElement("tdsStatus", getStatusText(data.tds, 0, 500, true));
+            updateElement("turbidityStatus", getStatusText(data.turbidity, 0, 5, true));
+            
+            // Cập nhật biểu đồ
+            const now = new Date().toLocaleTimeString();
+            updateChart(tempChart, now, data.temperature);
+            updateChart(phChart, now, data.ph);
+            updateChart(tdsChart, now, data.tds);
+            updateChart(turbidityChart, now, data.turbidity);
+        }
     } catch (error) {
         console.error("❌ Lỗi lấy dữ liệu từ Worker:", error);
     }
 }
 
-// Hàm cập nhật dữ liệu biểu đồ
+// Đánh giá trạng thái thông số
+function getStatusText(value, min, max, lowerIsBetter = false) {
+    if (lowerIsBetter) {
+        if (value <= max * 0.6) return "Tốt";
+        if (value <= max) return "Bình thường";
+        return "Cao";
+    } else {
+        if (value < min) return "Thấp";
+        if (value > max) return "Cao";
+        return "Bình thường";
+    }
+}
+
+// Cập nhật biểu đồ
 function updateChart(chart, label, value) {
     chart.data.labels.push(label);
     chart.data.datasets[0].data.push(value);
-
+    
     if (chart.data.labels.length > 10) {
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
     }
-
+    
     chart.update();
 }
 
-// Hàm cập nhật phần tử giao diện an toàn
+// Cập nhật phần tử giao diện
 function updateElement(id, value) {
-    let el = document.getElementById(id);
+    const el = document.getElementById(id);
     if (el) el.innerText = value;
 }
 
-// Lấy dữ liệu mỗi 2 giây
-setInterval(getData, 2000);
+// Kiểm tra liên tục nếu đang trong chế độ đo
+setInterval(() => {
+    if (isMeasuring) {
+        getData();
+    }
+}, 2000);
+
+// Khởi tạo - lấy trạng thái đo
+async function init() {
+    await getData(); // Lấy dữ liệu mới nhất nếu có
+}
         </script>
 
   </footer>
