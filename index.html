@@ -146,7 +146,12 @@
           <!-- Trạng Thái Cảm Biến -->
           <div class="card mb-4">
             <div class="card-header bg-warning text-white">
-              <strong>Trạng Thái Cảm Biến</strong>
+              <div
+                class="card-header bg-warning text-white d-flex justify-content-between align-items-center">
+                <strong>Trạng Thái Cảm Biến</strong>
+                <span id="connectionStatus" class="badge bg-success">Kết
+                  nối</span>
+              </div>
             </div>
             <div class="card-body">
               <table class="table text-center">
@@ -356,36 +361,54 @@ function createChart(canvasId, label, borderColor, bgColor) {
 
 // Lấy dữ liệu từ Worker
 async function getData() {
-    try {
-        const response = await fetch(`${worker_url}/get_latest_sensor_data`);
-        const result = await response.json();
-        
-        if (result.success && result.data) {
-            const data = result.data;
-            console.log("📊 Dữ liệu nhận được:", data);
-            
-            // Cập nhật giao diện
-            updateElement("tempValue", `${data.temperature} °C`);
-            updateElement("phValue", `${data.ph}`);
-            updateElement("TDSValue", `${data.tds} PPM`);
-            updateElement("turbidityValue", `${data.turbidity} NTU`);
-            
-            // Cập nhật trạng thái
-            updateElement("tempStatus", getStatusText(data.temperature, 20, 30));
-            updateElement("phStatus", getStatusText(data.ph, 6.5, 8.5));
-            updateElement("tdsStatus", getStatusText(data.tds, 0, 500, true));
-            updateElement("turbidityStatus", getStatusText(data.turbidity, 0, 5, true));
-            
-            // Cập nhật biểu đồ
-            const now = new Date().toLocaleTimeString();
-            updateChart(tempChart, now, data.temperature);
-            updateChart(phChart, now, data.ph);
-            updateChart(tdsChart, now, data.tds);
-            updateChart(turbidityChart, now, data.turbidity);
-        }
-    } catch (error) {
-        console.error("❌ Lỗi lấy dữ liệu từ Worker:", error);
-    }
+  try {
+      const response = await fetch(`${worker_url}/get_latest_sensor_data`);
+      const result = await response.json();
+      
+      if (result.success) {
+          const data = result.data;
+          console.log("📊 Dữ liệu nhận được:", data);
+          
+          // Kiểm tra trạng thái kết nối ESP32
+          const esp32Connected = result.esp32Connected !== false;
+          
+          // Cập nhật trạng thái kết nối trên giao diện (thêm phần tử HTML hiển thị trạng thái)
+          const connectionStatus = document.getElementById("connectionStatus");
+          if (connectionStatus) {
+              connectionStatus.innerText = esp32Connected ? "Kết nối" : "Mất kết nối";
+              connectionStatus.style.color = esp32Connected ? "green" : "red";
+          }
+          
+          // Cập nhật giao diện với dữ liệu nhận được
+          updateElement("tempValue", `${data.temperature} °C`);
+          updateElement("phValue", `${data.ph}`);
+          updateElement("TDSValue", `${data.tds} PPM`);
+          updateElement("turbidityValue", `${data.turbidity} NTU`);
+          
+          // Nếu ESP32 không kết nối, hiển thị "Mất kết nối" cho tất cả các trạng thái
+          if (!esp32Connected) {
+              updateElement("tempStatus", "Mất kết nối");
+              updateElement("phStatus", "Mất kết nối");
+              updateElement("tdsStatus", "Mất kết nối");
+              updateElement("turbidityStatus", "Mất kết nối");
+          } else {
+              // Nếu kết nối, hiển thị trạng thái bình thường
+              updateElement("tempStatus", getStatusText(data.temperature, 20, 30));
+              updateElement("phStatus", getStatusText(data.ph, 6.5, 8.5));
+              updateElement("tdsStatus", getStatusText(data.tds, 0, 500, true));
+              updateElement("turbidityStatus", getStatusText(data.turbidity, 0, 5, true));
+          }
+          
+          // Cập nhật biểu đồ
+          const now = new Date().toLocaleTimeString();
+          updateChart(tempChart, now, data.temperature);
+          updateChart(phChart, now, data.ph);
+          updateChart(tdsChart, now, data.tds);
+          updateChart(turbidityChart, now, data.turbidity);
+      }
+  } catch (error) {
+      console.error("❌ Lỗi lấy dữ liệu từ Worker:", error);
+  }
 }
 
 // Đánh giá trạng thái thông số
