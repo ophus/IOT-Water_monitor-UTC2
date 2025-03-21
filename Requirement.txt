@@ -1,0 +1,5 @@
+WiFiManager.h
+WebServer.h
+HTTPClient.h
+Preferences.h
+ArduinoJson.h
