@@ -3,12 +3,45 @@
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
+#include <WebServer.h>
+#include <Preferences.h>
+#include <math.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include "DFRobot_PH.h"
+#include <EEPROM.h>
 
 #define UPDATE_INTERVAL 600000 // 10 phút
 #define POLL_INTERVAL 10000    // 10 giây
 #define DATA_SEND_INTERVAL 5000  // Send data every 5 seconds
 
+#define LED_PIN 2   
+#define PH_PIN 34   
+#define TEMP_PIN 32 
+#define TDS_PIN 33  
+#define TUR_PIN 35  
+#define RELAY_PIN1 4
+#define RELAY_PIN2 5
+
+#define VREF 3.3         
+#define SCOUNT 15        
+#define BETA 3950  
+#define SERIES_RESISTOR 10000  
+#define K_VALUE 1.0 * (900) 
+#define CONVERSION_FACTOR 0.5
+
+const float U0 = 3600.0;
+
 Preferences preferences;
+
+DFRobot_PH ph;
+OneWire oneWire(TEMP_PIN);
+DallasTemperature sensors(&oneWire);
+
+int analogBuffer[SCOUNT];
+int analogBufferIndex = 0;
+float voltage = 0, tdsValue = 0;
+
 WebServer server(80);
 String workerUrl = "https://esp32-data-receiver.phucminh9395.workers.dev";
 unsigned long lastUpdateTime = 0;
@@ -32,6 +65,18 @@ void sendIPToWorker() {
     }
 }
 
+// void handleTestSensor() {
+//     float temperature = sensors.getTempCByIndex(0);
+//     int phRaw = analogRead(PH_PIN);
+//     float phVoltage = (phRaw / 4095.0) * 5000;
+//     float phValue = ph.readPH(phVoltage, temperature);
+//     int tdsRaw = analogRead(TDS_PIN);
+//     float voltage = (tdsRaw / 4095.0) * VREF;
+//     float tdsValue = 973 * voltage / (1.0 + 0.02 * (temperature - 25));
+//     int turRaw = analogRead(TUR_PIN);
+//     float turbidity = convertTurbidity(turRaw);
+// }
+
 void checkAndUpdateIP() {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("❌ Mất kết nối WiFi! Thử kết nối lại...");
@@ -47,11 +92,48 @@ void checkAndUpdateIP() {
     }
 }
 
+float convertTurbidity(int analogValue) {
+    float Um = (analogValue / 4095.0) * 5000;
+    float f = Um / U0;
+    return (f >= 0.98 && f <= 1.000) ? 0 : map(f * 100, 0, 100, 1000, 0);
+}
+
+int getMedianNum(int bArray[], int iFilterLen) {
+    int bTab[iFilterLen];
+    for (byte i = 0; i < iFilterLen; i++)
+        bTab[i] = bArray[i];
+    int i, j, bTemp;
+    for (j = 0; j < iFilterLen - 1; j++) {
+        for (i = 0; i < iFilterLen - j - 1; i++) {
+            if (bTab[i] > bTab[i + 1]) {
+                bTemp = bTab[i];
+                bTab[i] = bTab[i + 1];
+                bTab[i + 1] = bTemp;
+            }
+        }
+    }
+    return (iFilterLen & 1) > 0 ? bTab[(iFilterLen - 1) / 2] : (bTab[iFilterLen / 2] + bTab[iFilterLen / 2 - 1]) / 2;
+}
+
 String getSensorData() {
-    float temperature = random(200, 350) / 10.0;
-    float phValue = random(65, 85) / 10.0;
-    float tdsValue = random(100, 500);
-    float turbidity = random(0, 50) / 10.0;
+    sensors.requestTemperatures();
+    float temperature = sensors.getTempCByIndex(0);
+
+    analogBuffer[analogBufferIndex] = analogRead(TDS_PIN);
+    analogBufferIndex = (analogBufferIndex + 1) % SCOUNT;
+    int filteredADC = getMedianNum(analogBuffer, SCOUNT);
+    voltage = (filteredADC / 4095.0) * VREF;
+    // float tdsRaw = 973 * voltage;
+    // tdsValue = tdsRaw / (1.0 + 0.02 * (temperature - 25));
+
+    int phRaw = analogRead(PH_PIN);
+    float phVoltage = (phRaw / 4095.0) * 5000;
+    float phValue = ph.readPH(phVoltage, temperature);
+    int tdsRaw = analogRead(TDS_PIN);
+    float tdsVoltage = (tdsRaw / 4095.0) * VREF;
+    float tdsValue = 973 * tdsVoltage / (1.0 + 0.02 * (temperature - 25));
+    int turRaw = analogRead(TUR_PIN);
+    float turbidity = convertTurbidity(turRaw);
     DynamicJsonDocument doc(512);
     doc["temperature"] = temperature;
     doc["ph"] = phValue;
@@ -233,40 +315,7 @@ void handleCommand() {
     }
 }
 
-void handleRoot() {
-    String html = "<html><head><title>ESP32 Monitoring System</title>";
-    html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
-    html += "<style>body{font-family:Arial;margin:0;padding:20px;text-align:center;}";
-    html += "h1{color:#0066cc;}button{background:#0066cc;color:white;border:none;padding:10px 20px;margin:10px;border-radius:5px;cursor:pointer;}";
-    html += "button:hover{background:#004c99;}</style></head><body>";
-    html += "<h1>ESP32 Water Monitoring System</h1>";
-    html += "<p>IP: " + WiFi.localIP().toString() + "</p>";
-    html += "<p>WiFi Signal: " + String(WiFi.RSSI()) + " dBm</p>";
-    html += "<button onclick='sendCommand(\"measure\")'>Bắt Đầu Đo Liên Tục</button>";
-    html += "<button onclick='sendCommand(\"test\")'>Đo Thử Một Lần</button>";
-    html += "<button onclick='sendCommand(\"stop\")'>Dừng Đo</button>";
-    html += "<button onclick='sendCommand(\"status\")'>Trạng Thái</button>";
-    html += "<button onclick='sendCommand(\"restart\")'>Khởi Động Lại</button>";
-    html += "<div id='result' style='margin-top:20px;padding:10px;background:#f0f0f0;border-radius:5px;'></div>";
-    html += "<script>";
-    html += "function sendCommand(cmd) {";
-    html += "  document.getElementById('result').innerHTML = 'Đang xử lý...'";
-    html += "  fetch('/command', {";
-    html += "    method: 'POST',";
-    html += "    headers: {'Content-Type': 'application/json'},";
-    html += "    body: JSON.stringify({action: cmd})";
-    html += "  })";
-    html += "  .then(response => response.json())";
-    html += "  .then(data => {";
-    html += "    document.getElementById('result').innerHTML = 'Kết quả: ' + JSON.stringify(data)";
-    html += "  })";
-    html += "  .catch(error => {";
-    html += "    document.getElementById('result').innerHTML = 'Lỗi: ' + error";
-    html += "  });";
-    html += "}";
-    html += "</script></body></html>";
-    server.send(200, "text/html", html);
-}
+
 
 void setup() {
     Serial.begin(115200);
@@ -287,7 +336,7 @@ void setup() {
     Serial.println(WiFi.localIP());
     
     // Thiết lập các route cho webserver
-    server.on("/", HTTP_GET, handleRoot);
+
     server.on("/command", HTTP_POST, handleCommand);
     server.begin();
     Serial.println("✅ Máy chủ web đã khởi động");
