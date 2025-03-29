@@ -496,53 +496,42 @@
     <div class="water-drop water-drop-1"></div>
     <div class="water-drop water-drop-2"></div>
     <div class="water-drop water-drop-3"></div>
-
     <header class="dashboard-header">
       <div class="container-fluid px-4">
-        <!-- Sử dụng container-fluid và px-4 để kéo sát lề -->
         <div class="row align-items-center">
-          <!-- Phần logo và tên trường - chiếm ít không gian hơn -->
-          <div class="col-auto d-flex align-items-center">
-            <!-- Sử dụng col-auto thay vì col-md-2 -->
-            <div class="floating animate__animated animate__fadeInLeft me-2">
-              <img src="Media/UTC2.png" alt="Logo" style="height: 60px;">
+          <!-- Phần logo và tên trường (bên trái) -->
+          <div class="col-md-3 d-flex align-items-center">
+            <div class="floating me-3">
+              <img src="Media/UTC2.png" alt="UTC Logo"
+                style="height: 60px; width: auto;">
             </div>
-            <div class="d-flex flex-column" style="white-space: nowrap;">
-              <p class="custom-title mb-0"
-                style="margin: 0; line-height: 1.2; font-size: 0.9rem;">TRƯỜNG
-                ĐẠI HỌC GIAO THÔNG TẠI VẬN TẢI</p>
-              <p class="text-warning-custom"
-                style="margin: 0; line-height: 1.2; font-size: 0.8rem;">PHÂN
-                HIỆU TẠI TP.HCM</p>
+            <div class="d-flex flex-column">
+              <span class="school-name" style="font-size: 0.75em;">TRƯỜNG ĐẠI
+                HỌC GIAO THÔNG VẬN TẢI</span>
+              <span class="school-branch" style="font-size: 0.75rem;">PHÂN HIỆU
+                TẠI TP.HCM</span>
             </div>
           </div>
 
-          <!-- Phần tiêu đề chính - chiếm không gian còn lại -->
-          <div class="col text-center px-3">
-            <!-- Sử dụng col thay vì col-md-7 -->
-            <h2
-              class="mb-1 fw-bold header-font animate__animated animate__fadeIn"
-              style="font-size: 1.5rem;">
+          <!-- Phần tiêu đề chính (ở giữa) -->
+          <div class="col-md-6 text-center px-3">
+            <h2 class="mb-1 fw-bold header-font" style="font-size: 1.5rem;">
               HỆ THỐNG GIÁM SÁT CHẤT LƯỢNG NƯỚC NHÀ MÁY
             </h2>
-            <p class="mb-0 animate__animated animate__fadeIn animate__delay-1s"
-              style="font-size: 0.9rem;">
+            <p class="mb-0" style="font-size: 0.9rem;">
               Theo tiêu chuẩn Bộ Y Tế & QCVN 01-1:2024/BYT
             </p>
           </div>
 
-          <!-- Phần thời gian thực - chiếm không gian vừa đủ -->
-          <div class="col-auto text-end">
-            <!-- Sử dụng col-auto thay vì col-md-3 -->
-            <span
-              class="badge real-time-badge animate__animated animate__pulse animate__infinite"
-              style="font-size: 0.8rem;">
+          <!-- Phần thời gian thực (bên phải) -->
+          <div class="col-md-3 text-end">
+            <span class="badge real-time-badge" style="font-size: 0.8rem;">
               <i class="fas fa-circle me-1"></i> DỮ LIỆU THỜI GIAN THỰC
             </span>
           </div>
         </div>
+        <div class="water-wave"></div>
       </div>
-      <div class="water-wave"></div>
     </header>
     <!-- Main Content -->
     <div class="container my-5 flex-grow-1">
@@ -572,7 +561,8 @@
                 <span class="text-muted">&lt; 500 ppm</span>
               </div>
               <div class="d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-cloud-meatball me-2 text-success"></i> Độ
+                <span><i class="fas fa-cloud-meatball me-2 text-success"></i>
+                  Độ
                   đục</span>
                 <span class="text-muted">&lt; 5 NTU</span>
               </div>
@@ -605,7 +595,8 @@
               </div>
 
               <div class="mt-4">
-                <h6 class="text-uppercase text-muted mb-3"><small>Trạng thái hệ
+                <h6 class="text-uppercase text-muted mb-3"><small>Trạng thái
+                    hệ
                     thống</small></h6>
                 <div class="d-flex justify-content-between mb-2">
                   <span>Kết nối thiết bị:</span>
@@ -779,7 +770,8 @@
                     <canvas id="tdsChart"></canvas>
                   </div>
                 </div>
-                <div class="tab-pane fade" id="turbidity-chart" role="tabpanel">
+                <div class="tab-pane fade" id="turbidity-chart"
+                  role="tabpanel">
                   <div class="chart-container">
                     <canvas id="turbidityChart"></canvas>
                   </div>
@@ -858,8 +850,8 @@
             <h5 class="text-uppercase mb-3 text-warning header-font">ĐỀ TÀI
               NGHIÊN CỨU</h5>
             <p>Hệ thống giám sát chất lượng nước tự động</p>
-            <p class="mb-0">Ứng dụng IoT trong kiểm soát chất lượng nước nhà 
-            máy</p>
+            <p class="mb-0">Ứng dụng IoT trong kiểm soát chất lượng nước nhà
+              máy</p>
           </div>
           <div class="col-md-4 mb-4 mb-md-0">
             <h5 class="text-uppercase mb-3 text-warning header-font">NHÓM THỰC
@@ -876,7 +868,8 @@
             </div>
           </div>
           <div class="col-md-4">
-            <h5 class="text-uppercase mb-3 text-warning header-font">GIẢNG VIÊN
+            <h5 class="text-uppercase mb-3 text-warning header-font">GIẢNG
+              VIÊN
               HƯỚNG DẪN</h5>
             <p class="mb-1">K.S Mai Vạn Hậu</p>
             <p class="mb-0">Trường Đại học Giao thông Vận tải Phân Hiệu Tại
