@@ -5,201 +5,781 @@
       content="upgrade-insecure-requests">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Giám Sát Chất Lượng Nước</title>
+    <title>Giám Sát Chất Lượng Nước Nhà Máy</title>
     <!-- Bootstrap CSS -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@600;700&display=swap"
+      rel="stylesheet">
+    <!-- Animate.css -->
+    <link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <!-- AOS Animation -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js"></script>
     <style>
-    body {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-        background-color: #f0f2f5;
-        font-family: 'Be Vietnam Pro', sans-serif;
-    }
-    .container {
-        flex: 1;
-    }
-    .card {
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-
-    }
-    .dashboard-header {
-        background: linear-gradient(135deg, #271756, #271756);
-        color: #ffffff;
-        padding: 20px 0;
-        text-align: center;
-    }
-    .control-btn {
-        font-size: 1.1rem;
-        padding: 12px;
-        border-radius: 8px;
-    }
-    .sensor-value {
-        font-size: 2rem;
-        font-weight: bold;
-    }
-    .footer {
-        background: #271756;
-        color: white;
-        margin-top: auto;
-        margin-bottom: 0;
-        padding-bottom: 0;
-    }
-    .custom-title {
-      font-size: 12px; 
-      font-weight: bold;
-      text-transform: uppercase; 
-      margin-bottom: 0;
+    :root {
+      --primary-color: #3a36db;
+      --primary-light: #5753f0;
+      --secondary-color: #2a2678;
+      --accent-color: #00e5ff;
+      --success-color: #00e676;
+      --warning-color: #ffc400;
+      --danger-color: #ff3d57;
+      --dark-color: #121420;
+      --light-color: #f8faff;
+      --card-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.1);
+      --neumorph-shadow: 8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff;
     }
     
-    .text-warning-custom {
-      font-size: 12px; 
-      font-weight: bold;
-      text-transform: uppercase;
-      color: #ffc107; 
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f5f7ff;
+      color: #2d3748;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+    
+    .header-font {
+      font-family: 'Montserrat', sans-serif;
+    }
+    
+    .dashboard-header {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      color: white;
+      padding: 1.5rem 0;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      position: relative;
+      overflow: hidden;
+      z-index: 10;
+    }
+    
+    .dashboard-header::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h100v100H0z' fill='none'/%3E%3Cpath d='M20 20h60v60H20z' stroke='%23ffffff' stroke-width='0.5' stroke-opacity='0.05' fill='none'/%3E%3C/svg%3E");
+      opacity: 0.3;
+    }
+    
+    .card {
+      border: none;
+      border-radius: 16px;
+      box-shadow: var(--card-shadow);
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+      background-color: white;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+      pointer-events: none;
+    }
+    
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.05);
+    }
+    
+    .card-header {
+      border-radius: 16px 16px 0 0 !important;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: white;
+      border-bottom: none;
+      padding: 1rem 1.5rem;
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .card-header::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-color), transparent);
+    }
+    
+    .card-header.secondary {
+      background: linear-gradient(135deg, var(--dark-color), #1a1a2e);
+    }
+    
+    .card-header.warning {
+      background: linear-gradient(135deg, #ff9a00, #ff6b00);
+    }
+    
+    .card-header.info {
+      background: linear-gradient(135deg, #00b4db, #0083b0);
+    }
+    
+    .card-header.danger {
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+    }
+    
+    .sensor-card {
+      border-left: 4px solid var(--primary-color);
+      transition: all 0.3s ease;
+      background-color: white;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .sensor-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(to bottom, var(--primary-color), var(--accent-color));
+    }
+    
+    .sensor-card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .sensor-value {
+      font-size: 2.4rem;
+      font-weight: 700;
+      margin: 0.5rem 0;
+      position: relative;
+      display: inline-block;
+      background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-family: 'Montserrat', sans-serif;
+    }
+    
+    .status-badge {
+      padding: 0.4rem 0.8rem;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-badge i {
+      margin-right: 0.4rem;
+      font-size: 0.6rem;
+    }
+    
+    .status-good {
+      background-color: rgba(0, 230, 118, 0.1);
+      color: var(--success-color);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+    }
+    
+    .status-normal {
+      background-color: rgba(58, 54, 219, 0.1);
+      color: var(--primary-color);
+      border: 1px solid rgba(58, 54, 219, 0.3);
+    }
+    
+    .status-warning {
+      background-color: rgba(255, 196, 0, 0.1);
+      color: var(--warning-color);
+      border: 1px solid rgba(255, 196, 0, 0.3);
+    }
+    
+    .status-danger {
+      background-color: rgba(255, 61, 87, 0.1);
+      color: var(--danger-color);
+      border: 1px solid rgba(255, 61, 87, 0.3);
     }
     
     .chart-container {
       position: relative;
-      height: 150px; /* Giảm từ 400px xuống 250px */
+      height: 220px;
       width: 100%;
     }
     
+    .control-btn {
+      font-weight: 600;
+      padding: 1rem;
+      border-radius: 12px;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      position: relative;
+      overflow: hidden;
+      border: none;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      letter-spacing: 0.5px;
+      font-family: 'Montserrat', sans-serif;
+      text-transform: uppercase;
+    }
+    
+    .control-btn::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: 0.5s;
+    }
+    
+    .control-btn:hover::before {
+      left: 100%;
+    }
+    
+    .control-btn:active {
+      transform: scale(0.98);
+    }
+    
+    .footer {
+      background: linear-gradient(135deg, var(--dark-color), #1a1a2e);
+      color: white;
+      margin-top: auto;
+      position: relative;
+      overflow: hidden;
+      padding: 2rem 0;
+    }
+    
+    .footer::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    
+    .logo-container {
+      background-color: white;
+      border-radius: 16px;
+      padding: 0.75rem;
+      box-shadow: var(--card-shadow);
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(5px);
+    }
+    
+    .logo-container:hover {
+      transform: rotate(-2deg) scale(1.05);
+      box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.2);
+    }
+    
+    .nav-tabs .nav-link.active {
+      border-bottom: 3px solid var(--primary-color);
+      font-weight: 700;
+      color: var(--primary-color);
+      background-color: transparent;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    
+    .nav-tabs .nav-link {
+      border: none;
+      color: #718096;
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      transition: all 0.2s;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+    
+    .nav-tabs .nav-link:hover {
+      color: var(--primary-color);
+      background-color: rgba(58, 54, 219, 0.05);
+    }
+    
+    .real-time-badge {
+      animation: pulse 2s infinite;
+      background-color: white;
+      color: var(--primary-color);
+      font-weight: 700;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-family: 'Montserrat', sans-serif;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+    }
+    
+    .water-wave {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 100px;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%233a36db" fill-opacity="0.2" d="M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 0;
+    }
+    
+    .progress-thin {
+      height: 8px;
+      border-radius: 4px;
+      background-color: #edf2f7;
+      overflow: hidden;
+    }
+    
+    .progress-thin .progress-bar {
+      border-radius: 4px;
+      transition: width 0.6s ease;
+    }
+    
+    .sensor-icon {
+      font-size: 1.75rem;
+      margin-right: 0.75rem;
+      background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .custom-title {
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.25rem;
+      color: white;
+    }
+    
+    .text-warning-custom {
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--warning-color);
+      letter-spacing: 1px;
+    }
+    
+    .connection-status {
+      display: inline-flex;
+      align-items: center;
+      font-weight: 700;
+      font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.5px;
+    }
+    
+    .connection-status .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 0.75rem;
+      animation: pulse 1.5s infinite;
+      box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+    }
+    
+    .connection-status.connected .status-dot {
+      background-color: var(--success-color);
+    }
+    
+    .connection-status.disconnected .status-dot {
+      background-color: var(--danger-color);
+    }
+    
+    .school-name {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      letter-spacing: 0.5px;
+    }
+    
+    .school-branch {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+      color: var(--warning-color);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      letter-spacing: 0.5px;
+    }
+    
+    .floating {
+      animation: floating 6s ease-in-out infinite;
+    }
+    
+    @keyframes floating {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+    
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .section-title {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      position: relative;
+      display: inline-block;
+    }
+    
+    .section-title::after {
+      content: "";
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      width: 50%;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary-color), transparent);
+      border-radius: 3px;
+    }
+    
+    .water-drop {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="%234361ee" fill-opacity="0.1" d="M368 256c0 61.9-50.1 112-112 112s-112-50.1-112-112 50.1-112 112-112 112 50.1 112 112zm-112 80c44.2 0 80-35.8 80-80s-35.8-80-80-80-80 35.8-80 80 35.8 80 80 80z"/></svg>');
+      background-size: contain;
+      background-repeat: no-repeat;
+      z-index: -1;
+      opacity: 0.3;
+    }
+    
+    .water-drop-1 {
+      top: 10%;
+      left: 5%;
+      animation: floating 8s ease-in-out infinite;
+    }
+    
+    .water-drop-2 {
+      bottom: 15%;
+      right: 8%;
+      animation: floating 7s ease-in-out infinite 1s;
+    }
+    
+    .water-drop-3 {
+      top: 30%;
+      right: 15%;
+      animation: floating 9s ease-in-out infinite 0.5s;
+    }
   </style>
   </head>
-  <link rel="icon" type="image/png" href="Media\UTC2.png">
   <body>
+    <!-- Water Drop Decorations -->
+    <div class="water-drop water-drop-1"></div>
+    <div class="water-drop water-drop-2"></div>
+    <div class="water-drop water-drop-3"></div>
 
-    <!-- Header -->
-    <header class="container-fluid py-3 mb-3"
-      style="background-color:#271756 ; color: white;">
-      <div class="d-flex align-items-center justify-content-between px-4 mt-n2">
-        <div class="d-flex align-items-center">
-          <!-- Logo -->
-          <img src="Media/UTC2.png" alt="Logo" class="me-3 mt-n2"
-            style="height: 55px;">
-          <div class="d-flex flex-column">
-            <p class="custom-title mb-1 ">TRƯỜNG ĐẠI HỌC GIAO THÔNG VẬN TẢI</p>
-            <p class="text-warning-custom">PHÂN HIỆU TẠI TP. HỒ CHÍ MINH</p>
+    <header class="dashboard-header">
+      <div class="container-fluid px-4">
+        <!-- Sử dụng container-fluid và px-4 để kéo sát lề -->
+        <div class="row align-items-center">
+          <!-- Phần logo và tên trường - chiếm ít không gian hơn -->
+          <div class="col-auto d-flex align-items-center">
+            <!-- Sử dụng col-auto thay vì col-md-2 -->
+            <div class="floating animate__animated animate__fadeInLeft me-2">
+              <img src="Media/UTC2.png" alt="Logo" style="height: 60px;">
+            </div>
+            <div class="d-flex flex-column" style="white-space: nowrap;">
+              <p class="custom-title mb-0"
+                style="margin: 0; line-height: 1.2; font-size: 0.9rem;">TRƯỜNG
+                ĐẠI HỌC GIAO THÔNG TẠI VẬN TẢI</p>
+              <p class="text-warning-custom"
+                style="margin: 0; line-height: 1.2; font-size: 0.8rem;">PHÂN
+                HIỆU TP.HCM</p>
+            </div>
+          </div>
+
+          <!-- Phần tiêu đề chính - chiếm không gian còn lại -->
+          <div class="col text-center px-3">
+            <!-- Sử dụng col thay vì col-md-7 -->
+            <h2
+              class="mb-1 fw-bold header-font animate__animated animate__fadeIn"
+              style="font-size: 1.5rem;">
+              HỆ THỐNG GIÁM SÁT CHẤT LƯỢNG NƯỚC NHÀ MÁY
+            </h2>
+            <p class="mb-0 animate__animated animate__fadeIn animate__delay-1s"
+              style="font-size: 0.9rem;">
+              Theo tiêu chuẩn Bộ Y Tế & QCVN 01-1:2024/BYT
+            </p>
+          </div>
+
+          <!-- Phần thời gian thực - chiếm không gian vừa đủ -->
+          <div class="col-auto text-end">
+            <!-- Sử dụng col-auto thay vì col-md-3 -->
+            <span
+              class="badge real-time-badge animate__animated animate__pulse animate__infinite"
+              style="font-size: 0.8rem;">
+              <i class="fas fa-circle me-1"></i> DỮ LIỆU THỜI GIAN THỰC
+            </span>
           </div>
         </div>
-        <div class="text-center">
-          <p class="fw-bold mb-1 text-uppercase fs-4">Hệ Thống Giám Sát Chất
-            Lượng Nước</p>
-          <p class="fw-bold mb-1 text-uppercase fs-6">Theo tiêu chuẩn Bộ Y Tế
-            &amp; QCVN 01-1:2024/BYT</p>
-        </div>
-        <div style="width: 80px;"></div>
-
       </div>
+      <div class="water-wave"></div>
     </header>
-
-    <!-- Main Container -->
-    <!-- Main Container -->
-    <div class="container">
+    <!-- Main Content -->
+    <div class="container my-5 flex-grow-1">
       <div class="row">
-        <!-- Cột trái: Thông Tin Bộ Y Tế -->
-        <div class="col-md-6 mb-4">
-          <div class="card">
-            <div class="card-header bg-info text-white">
-              <strong>Thông Tin Bộ Y Tế</strong>
+        <!-- Left Column -->
+        <div class="col-lg-4" data-aos="fade-right" data-aos-duration="800">
+          <!-- Water Quality Standards -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <i class="fas fa-book me-2"></i> TIÊU CHUẨN CHẤT LƯỢNG NƯỚC
             </div>
             <div class="card-body">
-              <p class="mb-1"><strong>pH:</strong> 6.5 - 8.5</p>
-              <p class="mb-1"><strong>TDS:</strong> &lt; 500 ppm</p>
-              <p class="mb-1"><strong>Độ đục:</strong> &lt; 5 NTU</p>
-              <p class="mb-0"><strong>Nhiệt độ:</strong> Tùy theo mùa</p>
-              <small class="text-muted">Nguồn:
+              <div
+                class="d-flex justify-content-between align-items-center mb-3">
+                <span><i class="fas fa-temperature-high me-2 text-danger"></i>
+                  Nhiệt độ</span>
+                <span class="text-muted">Theo mùa</span>
+              </div>
+              <div
+                class="d-flex justify-content-between align-items-center mb-3">
+                <span><i class="fas fa-water me-2 text-info"></i> Độ pH</span>
+                <span class="text-muted">6.5 - 8.5</span>
+              </div>
+              <div
+                class="d-flex justify-content-between align-items-center mb-3">
+                <span><i class="fas fa-tint me-2 text-warning"></i> TDS</span>
+                <span class="text-muted">&lt; 500 ppm</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-cloud-meatball me-2 text-success"></i> Độ
+                  đục</span>
+                <span class="text-muted">&lt; 5 NTU</span>
+              </div>
+              <hr>
+              <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i> Nguồn:
                 <a
-                  href="Document\Vinfil-so-sanh-cac-tieu-chuan-nuoc-sach-sinh-hoat.pdf"
-                  target="_blank" rel="noopener noreferrer">QCVN
-                  01-1:2024/BYT</a>
+                  href="Document/Vinfil-so-sanh-cac-tieu-chuan-nuoc-sach-sinh-hoat.pdf"
+                  target="_blank" rel="noopener noreferrer"
+                  class="text-decoration-none">QCVN 01-1:2024/BYT</a>
               </small>
             </div>
           </div>
 
-          <!-- Điều Khiển Hệ Thống - Đặt dưới Thông Tin Bộ Y Tế -->
-          <div class="card mt-4">
-            <div class="card-header bg-secondary text-white">
-              <strong>Điều Khiển Hệ Thống</strong>
+          <!-- System Control -->
+          <div class="card mb-4">
+            <div class="card-header secondary">
+              <i class="fas fa-cogs me-2"></i> ĐIỀU KHIỂN HỆ THỐNG
             </div>
             <div class="card-body">
-              <div class="d-grid gap-2">
+              <div class="d-grid gap-3">
                 <button id="btnStartMeasure"
-                  class="btn btn-primary control-btn">Bắt đầu Đo</button>
+                  class="btn btn-primary control-btn py-3">
+                  <i class="fas fa-play-circle me-2"></i> Bắt đầu đo
+                </button>
                 <button id="btnEmergencyStop"
-                  class="btn btn-danger control-btn">Dừng </button>
+                  class="btn btn-danger control-btn py-3">
+                  <i class="fas fa-stop-circle me-2"></i> Dừng khẩn cấp
+                </button>
+              </div>
+
+              <div class="mt-4">
+                <h6 class="text-uppercase text-muted mb-3"><small>Trạng thái hệ
+                    thống</small></h6>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Kết nối thiết bị:</span>
+                  <span id="connectionStatus"
+                    class="connection-status connected">
+                    <span class="status-dot"></span>
+                    <span>Đang kết nối</span>
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Trạng thái đo:</span>
+                  <span id="measurementStatus" class="badge bg-secondary">Đang
+                    chờ</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span>Lần cập nhật cuối:</span>
+                  <span id="lastUpdate" class="text-muted">--:--:--</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Cột phải: Trạng Thái Cảm Biến & Bảng Thống Kê -->
-        <div class="col-md-6">
-          <!-- Trạng Thái Cảm Biến -->
+        <!-- Middle Column -->
+        <div class="col-lg-4" data-aos="fade-up" data-aos-duration="800">
+          <!-- Current Sensor Values -->
           <div class="card mb-4">
-            <div class="card-header bg-warning text-white">
-              <div
-                class="card-header bg-warning text-white d-flex justify-content-between align-items-center">
-                <strong>Trạng Thái Cảm Biến</strong>
-                <span id="connectionStatus" class="badge bg-success">Kết
-                  nối</span>
+            <div class="card-header info">
+              <i class="fas fa-chart-line me-2"></i> GIÁ TRỊ HIỆN TẠI
+            </div>
+            <div class="card-body">
+              <div class="row text-center">
+                <!-- Temperature -->
+                <div class="col-6 mb-4">
+                  <div class="card sensor-card h-100">
+                    <div class="card-body">
+                      <div
+                        class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title text-muted"><i
+                            class="fas fa-temperature-high sensor-icon"></i>Nhiệt
+                          độ</h5>
+                        <span id="tempStatus"
+                          class="status-badge status-normal"><i
+                            class="fas fa-circle"></i> Bình thường</span>
+                      </div>
+                      <p id="tempValue" class="sensor-value text-danger">--
+                        °C</p>
+                      <div class="progress progress-thin">
+                        <div id="tempProgress" class="progress-bar bg-danger"
+                          role="progressbar"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- pH -->
+                <div class="col-6 mb-4">
+                  <div class="card sensor-card h-100">
+                    <div class="card-body">
+                      <div
+                        class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title text-muted"><i
+                            class="fas fa-water sensor-icon"></i>Độ pH</h5>
+                        <span id="phStatus"
+                          class="status-badge status-normal"><i
+                            class="fas fa-circle"></i> Bình thường</span>
+                      </div>
+                      <p id="phValue" class="sensor-value text-primary">--</p>
+                      <div class="progress progress-thin">
+                        <div id="phProgress" class="progress-bar bg-primary"
+                          role="progressbar"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- TDS -->
+                <div class="col-6">
+                  <div class="card sensor-card h-100">
+                    <div class="card-body">
+                      <div
+                        class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title text-muted"><i
+                            class="fas fa-tint sensor-icon"></i>TDS</h5>
+                        <span id="tdsStatus"
+                          class="status-badge status-normal"><i
+                            class="fas fa-circle"></i> Bình thường</span>
+                      </div>
+                      <p id="TDSValue" class="sensor-value text-warning">--
+                        PPM</p>
+                      <div class="progress progress-thin">
+                        <div id="tdsProgress" class="progress-bar bg-warning"
+                          role="progressbar"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Turbidity -->
+                <div class="col-6">
+                  <div class="card sensor-card h-100">
+                    <div class="card-body">
+                      <div
+                        class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title text-muted"><i
+                            class="fas fa-cloud-meatball sensor-icon"></i>Độ
+                          đục</h5>
+                        <span id="turbidityStatus"
+                          class="status-badge status-normal"><i
+                            class="fas fa-circle"></i> Bình thường</span>
+                      </div>
+                      <p id="turbidityValue"
+                        class="sensor-value text-success">-- NTU</p>
+                      <div class="progress progress-thin">
+                        <div id="turbidityProgress"
+                          class="progress-bar bg-success"
+                          role="progressbar"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="card-body">
-              <table class="table text-center">
-                <thead>
-                  <tr>
-                    <th>Nhiệt độ</th>
-                    <th>pH</th>
-                    <th>Độ đục</th>
-                    <th>TDS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td id="tempStatus">--</td>
-                    <td id="phStatus">--</td>
-                    <td id="turbidityStatus">--</td>
-                    <td id="tdsStatus">--</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
           </div>
+        </div>
 
-          <!-- Bảng Thống Kê -->
-          <div class="card">
-            <div class="card-header bg-dark text-white">
-              <strong>Bảng Thống Kê</strong>
+        <!-- Right Column -->
+        <div class="col-lg-4" data-aos="fade-left" data-aos-duration="800">
+          <!-- Charts -->
+          <div class="card mb-4">
+            <div class="card-header secondary">
+              <i class="fas fa-chart-bar me-2"></i> BIỂU ĐỒ THEO THỜI GIAN
             </div>
             <div class="card-body">
-              <div class="row">
-                <!-- Hàng 1 -->
-                <div class="col-md-6">
+              <ul class="nav nav-tabs mb-3" id="chartTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="temp-tab"
+                    data-bs-toggle="tab" data-bs-target="#temp-chart"
+                    type="button" role="tab">Nhiệt độ</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="ph-tab" data-bs-toggle="tab"
+                    data-bs-target="#ph-chart" type="button"
+                    role="tab">pH</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tds-tab" data-bs-toggle="tab"
+                    data-bs-target="#tds-chart" type="button"
+                    role="tab">TDS</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="turbidity-tab"
+                    data-bs-toggle="tab" data-bs-target="#turbidity-chart"
+                    type="button" role="tab">Độ đục</button>
+                </li>
+              </ul>
+              <div class="tab-content" id="chartTabContent">
+                <div class="tab-pane fade show active" id="temp-chart"
+                  role="tabpanel">
                   <div class="chart-container">
                     <canvas id="tempChart"></canvas>
                   </div>
                 </div>
-                <div class="col-md-6">
+                <div class="tab-pane fade" id="ph-chart" role="tabpanel">
                   <div class="chart-container">
                     <canvas id="phChart"></canvas>
                   </div>
                 </div>
-              </div>
-              <div class="row mt-3">
-                <!-- Hàng 2 -->
-                <div class="col-md-6">
+                <div class="tab-pane fade" id="tds-chart" role="tabpanel">
                   <div class="chart-container">
                     <canvas id="tdsChart"></canvas>
                   </div>
                 </div>
-                <div class="col-md-6">
+                <div class="tab-pane fade" id="turbidity-chart" role="tabpanel">
                   <div class="chart-container">
                     <canvas id="turbidityChart"></canvas>
                   </div>
@@ -207,27 +787,61 @@
               </div>
             </div>
           </div>
-          <div class="card mt-4">
-            <div class="card-header bg-primary text-white">
-              <strong>Thông Số Chất Lượng Nước</strong>
+
+          <!-- Sensor Status -->
+          <div class="card">
+            <div class="card-header warning">
+              <i class="fas fa-microchip me-2"></i> TRẠNG THÁI CẢM BIẾN
             </div>
             <div class="card-body">
-              <div class="row text-center">
-                <div class="col-md-3 mb-3">
-                  <h5>Nhiệt Độ</h5>
-                  <p id="tempValue" class="sensor-value">-- °C</p>
+              <div class="row">
+                <div class="col-6 mb-3">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-danger bg-opacity-10 p-2 rounded me-2">
+                      <i class="fas fa-temperature-high text-danger"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0 small text-muted">Nhiệt độ</p>
+                      <p id="tempSensorStatus"
+                        class="mb-0 fw-bold text-success">Hoạt động</p>
+                    </div>
+                  </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                  <h5>pH</h5>
-                  <p id="phValue" class="sensor-value">--</p>
+                <div class="col-6 mb-3">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 p-2 rounded me-2">
+                      <i class="fas fa-water text-primary"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0 small text-muted">Độ pH</p>
+                      <p id="phSensorStatus"
+                        class="mb-0 fw-bold text-success">Hoạt động</p>
+                    </div>
+                  </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                  <h5>Độ Đục</h5>
-                  <p id="turbidityValue" class="sensor-value">-- NTU</p>
+                <div class="col-6">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-warning bg-opacity-10 p-2 rounded me-2">
+                      <i class="fas fa-tint text-warning"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0 small text-muted">TDS</p>
+                      <p id="tdsSensorStatus"
+                        class="mb-0 fw-bold text-success">Hoạt động</p>
+                    </div>
+                  </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                  <h5>TDS</h5>
-                  <p id="TDSValue" class="sensor-value">-- PPM</p>
+                <div class="col-6">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-success bg-opacity-10 p-2 rounded me-2">
+                      <i class="fas fa-cloud-meatball text-success"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0 small text-muted">Độ đục</p>
+                      <p id="turbiditySensorStatus"
+                        class="mb-0 fw-bold text-success">Hoạt động</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -236,222 +850,308 @@
       </div>
     </div>
 
-    <footer class="footer mt-4 py-3 text-white w-100"
-      style="background-color: #271756;">
-      <div class="container-fluid">
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
         <div class="row">
-          <div class="col-md-3 text-start">
-            <p class="text-warning-custom fw-bold fs-5 mb-2">ĐỀ TÀI:</p>
-            <p class="fs-6">Giám sát chất lượng nước</p>
+          <div class="col-md-4 mb-4 mb-md-0">
+            <h5 class="text-uppercase mb-3 text-warning header-font">ĐỀ TÀI
+              NGHIÊN CỨU</h5>
+            <p>Hệ thống giám sát chất lượng nước tự động</p>
+            <p class="mb-0">Ứng dụng IoT trong kiểm soát chất lượng nước sinh
+              hoạt</p>
           </div>
-
-          <div class="col-md-3 border-start">
-            <p class="text-warning-custom fw-bold fs-5 mb-2">THỰC HIỆN BỞI:</p>
-            <p class="fs-6 mb-1">Lê Minh Phúc</p>
-            <p class="fs-6 mb-1">Lê Thanh Vương</p>
-            <p class="fs-6 mb-1">Trần Hoàng Nghĩa</p>
-            <p class="fs-6 mb-0">Nguyễn Huy Hậu</p>
+          <div class="col-md-4 mb-4 mb-md-0">
+            <h5 class="text-uppercase mb-3 text-warning header-font">NHÓM THỰC
+              HIỆN</h5>
+            <div class="row">
+              <div class="col-6">
+                <p class="mb-1">Lê Minh Phúc</p>
+                <p class="mb-1">Lê Thanh Vương</p>
+              </div>
+              <div class="col-6">
+                <p class="mb-1">Trần Hoàng Nghĩa</p>
+                <p class="mb-1">Nguyễn Huy Hậu</p>
+              </div>
+            </div>
           </div>
-
-          <div class="col-md-3 border-start">
-            <p class="text-warning-custom fw-bold fs-5 mb-2">MÃ SỐ SINH
-              VIÊN:</p>
-            <p class="fs-6 mb-1">6351030056</p>
-            <p class="fs-6 mb-1">6351030086</p>
-            <p class="fs-6 mb-1">6351030047</p>
-            <p class="fs-6 mb-0">6351030056</p>
+          <div class="col-md-4">
+            <h5 class="text-uppercase mb-3 text-warning header-font">GIẢNG VIÊN
+              HƯỚNG DẪN</h5>
+            <p class="mb-1">K.S Mai Vạn Hậu</p>
+            <p class="mb-0">Trường Đại học Giao thông Vận tải Phân Hiệu Tại
+              TP.HCM</p>
           </div>
-
-          <div class="col-md-3 border-start">
-            <p class="text-warning-custom fw-bold fs-5 mb-2">GIẢNG VIÊN HƯỚNG
-              DẪN:</p>
-            <p class="fs-6 mb-0">K.S Mai Vạn Hậu</p>
-          </div>
+        </div>
+        <hr class="my-4" style="border-color: rgba(255,255,255,0.1);">
+        <div class="text-center">
+          <p class="mb-0 small">© 2025 Bản quyền thuộc về Nhóm nghiên cứu -
+            UTC2</p>
         </div>
       </div>
     </footer>
 
+    <!-- Bootstrap JS -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- AOS Animation -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
     <script>
-   const worker_url = "https://esp32-data-receiver.phucminh9395.workers.dev";
-let isMeasuring = false;
+    // Khởi tạo AOS animation
+    AOS.init({
+      duration: 800,
+      once: true
+    });
 
-// Gửi lệnh đến Worker
-async function sendCommand(command) {
-    try {
-        const response = await fetch(`${worker_url}/command`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: command }),
-        });
-        const data = await response.json();
-        console.log(`📤 Lệnh gửi đi: ${command}, Phản hồi:`, data);
-        return data;
-    } catch (error) {
-        console.error(`❌ Lỗi gửi lệnh ${command}:`, error);
+    const worker_url = "https://esp32-data-receiver.phucminh9395.workers.dev";
+    let isMeasuring = false;
+
+    // Gửi lệnh đến Worker
+    async function sendCommand(command) {
+        try {
+            const response = await fetch(`${worker_url}/command`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: command }),
+            });
+            const data = await response.json();
+            console.log(`📤 Lệnh gửi đi: ${command}, Phản hồi:`, data);
+            return data;
+        } catch (error) {
+            console.error(`❌ Lỗi gửi lệnh ${command}:`, error);
+        }
     }
-}
 
-// Gửi lệnh "Đo liên tục"
-document.getElementById("btnStartMeasure").addEventListener("click", async function () {
-    const response = await sendCommand("measure");
-    if (response && response.success) {
-        isMeasuring = true;
-        console.log("Bắt đầu đo liên tục");
-    }
-});
-
-// Gửi lệnh "Test" (đo một lần)
-//document.getElementById("btnTestSensor").addEventListener("click", async function () {
-   // const response = await sendCommand("test");
-   // if (response && response.success) {
-      //  isMeasuring = true;
-        // Chỉ lấy dữ liệu một lần sau khi test
-       // setTimeout(() => {
-       //     getData();
-        //    isMeasuring = false;
-       // }, 2000);
-       // console.log("Test cảm biến một lần");
-  //  }
-//});
-
-// Gửi lệnh "Dừng"
-document.getElementById("btnEmergencyStop").addEventListener("click", async function () {
-    const response = await sendCommand("stop");
-    if (response && response.success) {
-        isMeasuring = false;
-        console.log("Đã dừng đo");
-    }
-});
-
-// Biểu đồ cảm biến
-const tempChart = createChart("tempChart", "Nhiệt độ (°C)", "red", "rgba(255, 0, 0, 0.2)");
-const phChart = createChart("phChart", "pH", "blue", "rgba(0, 0, 255, 0.2)");
-const tdsChart = createChart("tdsChart", "TDS (ppm)", "orange", "rgba(255, 165, 0, 0.2)");
-const turbidityChart = createChart("turbidityChart", "Độ đục (NTU)", "green", "rgba(0, 255, 0, 0.2)");
-
-// Hàm tạo biểu đồ
-function createChart(canvasId, label, borderColor, bgColor) {
-    const ctx = document.getElementById(canvasId).getContext("2d");
-    return new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: [],
-            datasets: [{
-                label: label,
-                data: [],
-                borderColor: borderColor,
-                backgroundColor: bgColor,
-                borderWidth: 2,
-                tension: 0.4,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: { display: true },
-                y: { display: true }
-            }
+    // Gửi lệnh "Đo liên tục"
+    document.getElementById("btnStartMeasure").addEventListener("click", async function () {
+        const response = await sendCommand("measure");
+        if (response && response.success) {
+            isMeasuring = true;
+            console.log("Bắt đầu đo liên tục");
+            document.getElementById("measurementStatus").textContent = "Đang đo";
+            document.getElementById("measurementStatus").className = "badge bg-success";
         }
     });
-}
 
-// Lấy dữ liệu từ Worker
-async function getData() {
-  try {
-      const response = await fetch(`${worker_url}/get_latest_sensor_data`);
-      const result = await response.json();
-      
-      if (result.success) {
-          const data = result.data;
-          console.log("📊 Dữ liệu nhận được:", data);
+    // Gửi lệnh "Dừng"
+    document.getElementById("btnEmergencyStop").addEventListener("click", async function () {
+        const response = await sendCommand("stop");
+        if (response && response.success) {
+            isMeasuring = false;
+            console.log("Đã dừng đo");
+            document.getElementById("measurementStatus").textContent = "Đã dừng";
+            document.getElementById("measurementStatus").className = "badge bg-secondary";
+        }
+    });
+
+    // Khởi tạo biểu đồ
+    const tempChart = createChart("tempChart", "Nhiệt độ (°C)", "rgba(220, 53, 69)", "rgba(220, 53, 69, 0.1)");
+    const phChart = createChart("phChart", "Độ pH", "rgba(13, 110, 253)", "rgba(13, 110, 253, 0.1)");
+    const tdsChart = createChart("tdsChart", "TDS (ppm)", "rgba(255, 193, 7)", "rgba(255, 193, 7, 0.1)");
+    const turbidityChart = createChart("turbidityChart", "Độ đục (NTU)", "rgba(25, 135, 84)", "rgba(25, 135, 84, 0.1)");
+
+    function createChart(canvasId, label, borderColor, bgColor) {
+        const ctx = document.getElementById(canvasId).getContext("2d");
+        return new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: label,
+                    data: [],
+                    borderColor: borderColor,
+                    backgroundColor: bgColor,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 0,
+                    pointHoverRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: "rgba(0, 0, 0, 0.05)"
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Lấy dữ liệu từ Worker
+    async function getData() {
+      try {
+          const response = await fetch(`${worker_url}/get_latest_sensor_data`);
+          const result = await response.json();
           
-          // Kiểm tra trạng thái kết nối ESP32
-          const esp32Connected = result.esp32Connected !== false;
-          
-          // Cập nhật trạng thái kết nối trên giao diện (thêm phần tử HTML hiển thị trạng thái)
-          const connectionStatus = document.getElementById("connectionStatus");
-          if (connectionStatus) {
-              connectionStatus.innerText = esp32Connected ? "Kết nối" : "Mất kết nối";
-              connectionStatus.style.color = esp32Connected ? "green" : "red";
+          if (result.success) {
+              const data = result.data;
+              console.log("📊 Dữ liệu nhận được:", data);
+              
+              // Cập nhật thời gian cập nhật cuối
+              const now = new Date();
+              document.getElementById("lastUpdate").textContent = now.toLocaleTimeString();
+              
+              // Kiểm tra trạng thái kết nối ESP32
+              const esp32Connected = result.esp32Connected !== false;
+              
+              // Cập nhật trạng thái kết nối trên giao diện
+              const connectionStatus = document.getElementById("connectionStatus");
+              if (connectionStatus) {
+                  if (esp32Connected) {
+                      connectionStatus.className = "connection-status connected";
+                      connectionStatus.querySelector("span:last-child").textContent = "Đang kết nối";
+                  } else {
+                      connectionStatus.className = "connection-status disconnected";
+                      connectionStatus.querySelector("span:last-child").textContent = "Mất kết nối";
+                  }
+              }
+              
+              // Cập nhật giao diện với dữ liệu nhận được
+              updateElement("tempValue", `${data.temperature} °C`);
+              updateElement("phValue", `${data.ph}`);
+              updateElement("TDSValue", `${data.tds} PPM`);
+              updateElement("turbidityValue", `${data.turbidity} NTU`);
+              
+              // Cập nhật progress bars
+              updateProgress("tempProgress", data.temperature, 10, 40);
+              updateProgress("phProgress", data.ph, 0, 14);
+              updateProgress("tdsProgress", data.tds, 0, 1000);
+              updateProgress("turbidityProgress", data.turbidity, 0, 10);
+              
+              // Nếu ESP32 không kết nối, hiển thị "Mất kết nối" cho tất cả các trạng thái
+              if (!esp32Connected) {
+                  updateStatus("tempStatus", "Mất kết nối", "danger");
+                  updateStatus("phStatus", "Mất kết nối", "danger");
+                  updateStatus("tdsStatus", "Mất kết nối", "danger");
+                  updateStatus("turbidityStatus", "Mất kết nối", "danger");
+                  
+                  document.getElementById("tempSensorStatus").textContent = "Ngắt kết nối";
+                  document.getElementById("tempSensorStatus").className = "mb-0 fw-bold text-danger";
+                  document.getElementById("phSensorStatus").textContent = "Ngắt kết nối";
+                  document.getElementById("phSensorStatus").className = "mb-0 fw-bold text-danger";
+                  document.getElementById("tdsSensorStatus").textContent = "Ngắt kết nối";
+                  document.getElementById("tdsSensorStatus").className = "mb-0 fw-bold text-danger";
+                  document.getElementById("turbiditySensorStatus").textContent = "Ngắt kết nối";
+                  document.getElementById("turbiditySensorStatus").className = "mb-0 fw-bold text-danger";
+              } else {
+                  // Nếu kết nối, hiển thị trạng thái bình thường
+                  updateStatus("tempStatus", getStatusText(data.temperature, 20, 30), getStatusClass(data.temperature, 20, 30));
+                  updateStatus("phStatus", getStatusText(data.ph, 6.5, 8.5), getStatusClass(data.ph, 6.5, 8.5));
+                  updateStatus("tdsStatus", getStatusText(data.tds, 0, 500, true), getStatusClass(data.tds, 0, 500, true));
+                  updateStatus("turbidityStatus", getStatusText(data.turbidity, 0, 5, true), getStatusClass(data.turbidity, 0, 5, true));
+                  
+                  document.getElementById("tempSensorStatus").textContent = "Hoạt động";
+                  document.getElementById("tempSensorStatus").className = "mb-0 fw-bold text-success";
+                  document.getElementById("phSensorStatus").textContent = "Hoạt động";
+                  document.getElementById("phSensorStatus").className = "mb-0 fw-bold text-success";
+                  document.getElementById("tdsSensorStatus").textContent = "Hoạt động";
+                  document.getElementById("tdsSensorStatus").className = "mb-0 fw-bold text-success";
+                  document.getElementById("turbiditySensorStatus").textContent = "Hoạt động";
+                  document.getElementById("turbiditySensorStatus").className = "mb-0 fw-bold text-success";
+              }
+              
+              // Cập nhật biểu đồ
+              const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+              updateChart(tempChart, timeString, data.temperature);
+              updateChart(phChart, timeString, data.ph);
+              updateChart(tdsChart, timeString, data.tds);
+              updateChart(turbidityChart, timeString, data.turbidity);
           }
-          
-          // Cập nhật giao diện với dữ liệu nhận được
-          updateElement("tempValue", `${data.temperature} °C`);
-          updateElement("phValue", `${data.ph}`);
-          updateElement("TDSValue", `${data.tds} PPM`);
-          updateElement("turbidityValue", `${data.turbidity} NTU`);
-          
-          // Nếu ESP32 không kết nối, hiển thị "Mất kết nối" cho tất cả các trạng thái
-          if (!esp32Connected) {
-              updateElement("tempStatus", "Mất kết nối");
-              updateElement("phStatus", "Mất kết nối");
-              updateElement("tdsStatus", "Mất kết nối");
-              updateElement("turbidityStatus", "Mất kết nối");
-          } else {
-              // Nếu kết nối, hiển thị trạng thái bình thường
-              updateElement("tempStatus", getStatusText(data.temperature, 20, 30));
-              updateElement("phStatus", getStatusText(data.ph, 6.5, 8.5));
-              updateElement("tdsStatus", getStatusText(data.tds, 0, 500, true));
-              updateElement("turbidityStatus", getStatusText(data.turbidity, 0, 5, true));
-          }
-          
-          // Cập nhật biểu đồ
-          const now = new Date().toLocaleTimeString();
-          updateChart(tempChart, now, data.temperature);
-          updateChart(phChart, now, data.ph);
-          updateChart(tdsChart, now, data.tds);
-          updateChart(turbidityChart, now, data.turbidity);
+      } catch (error) {
+          console.error("❌ Lỗi lấy dữ liệu từ Worker:", error);
       }
-  } catch (error) {
-      console.error("❌ Lỗi lấy dữ liệu từ Worker:", error);
-  }
-}
-
-// Đánh giá trạng thái thông số
-function getStatusText(value, min, max, lowerIsBetter = false) {
-    if (lowerIsBetter) {
-        if (value <= max * 0.6) return "Tốt";
-        if (value <= max) return "Bình thường";
-        return "Cao";
-    } else {
-        if (value < min) return "Thấp";
-        if (value > max) return "Cao";
-        return "Bình thường";
     }
-}
 
-// Cập nhật biểu đồ
-function updateChart(chart, label, value) {
-    chart.data.labels.push(label);
-    chart.data.datasets[0].data.push(value);
-    
-    if (chart.data.labels.length > 10) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
+    // Cập nhật thanh tiến trình
+    function updateProgress(id, value, min, max) {
+      const progress = document.getElementById(id);
+      if (progress) {
+        const percentage = Math.min(100, ((value - min) / (max - min)) * 100);
+        progress.style.width = `${percentage}%`;
+      }
     }
-    
-    chart.update();
-}
 
-// Cập nhật phần tử giao diện
-function updateElement(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.innerText = value;
-}
+    // Cập nhật trạng thái
+    function updateStatus(id, text, statusClass) {
+      const element = document.getElementById(id);
+      if (element) {
+        element.textContent = text;
+        element.className = `status-badge status-${statusClass}`;
+      }
+    }
 
-// Kiểm tra liên tục nếu đang trong chế độ đo
-setInterval(() => {
-    if (isMeasuring) {
+    // Đánh giá trạng thái thông số
+    function getStatusText(value, min, max, lowerIsBetter = false) {
+        if (lowerIsBetter) {
+            if (value <= max * 0.6) return "Tốt";
+            if (value <= max) return "Bình thường";
+            return "Cao";
+        } else {
+            if (value < min) return "Thấp";
+            if (value > max) return "Cao";
+            return "Bình thường";
+        }
+    }
+
+    // Lấy class trạng thái
+    function getStatusClass(value, min, max, lowerIsBetter = false) {
+        if (lowerIsBetter) {
+            if (value <= max * 0.6) return "good";
+            if (value <= max) return "normal";
+            return "danger";
+        } else {
+            if (value < min) return "warning";
+            if (value > max) return "danger";
+            return "normal";
+        }
+    }
+
+    // Cập nhật biểu đồ
+    function updateChart(chart, label, value) {
+        chart.data.labels.push(label);
+        chart.data.datasets[0].data.push(value);
+        
+        if (chart.data.labels.length > 10) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+        }
+        
+        chart.update();
+    }
+
+    // Cập nhật phần tử giao diện
+    function updateElement(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.innerText = value;
+    }
+
+    // Kiểm tra liên tục nếu đang trong chế độ đo
+    setInterval(() => {
+        if (isMeasuring) {
+            getData();
+        }
+    }, 2000);
+
+    // Khởi tạo
+    document.addEventListener("DOMContentLoaded", function() {
         getData();
-    }
-}, 2000);
-
-// Khởi tạo - lấy trạng thái đo
-async function init() {
-    await getData(); // Lấy dữ liệu mới nhất nếu có
-}
-        </script>
-
-  </footer>
-</footer>
+    });
+  </script>
+  </body>
+</html>
