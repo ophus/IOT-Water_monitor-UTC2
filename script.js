@@ -45,5 +45,27 @@ function updateElement(id, value) {
     }
 }
 
+async function updateChart() {
+  try {
+    const response = await fetch("https://your-worker-url/get_recent_data");
+    const result = await response.json();
+    
+    if (result.success) {
+      const chartData = result.data.map(item => ({
+        time: new Date(item.timestamp).toLocaleTimeString(),
+        temperature: item.data.temperature,
+        ph: item.data.ph,
+        tds: item.data.tds,
+        turbidity: item.data.turbidity
+      }));
+
+      // Cập nhật biểu đồ với dữ liệu mới
+      updateGraph(chartData);
+    }
+  } catch (error) {
+    console.error("Failed to fetch data:", error);
+  }
+}
+
 // Lấy dữ liệu mỗi 5 giây
-setInterval(getData, 5000);
+setInterval(getData, 10000);
