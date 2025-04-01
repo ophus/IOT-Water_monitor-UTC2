@@ -3,8 +3,6 @@
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
-#include <WebServer.h>
-#include <Preferences.h>
 #include <math.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -23,7 +21,7 @@
 #define RELAY_PIN1 4
 #define RELAY_PIN2 5
 
-#define VREF 3.3         
+#define VREF 3.3
 #define SCOUNT 15        
 #define BETA 3950  
 #define SERIES_RESISTOR 10000  
@@ -32,6 +30,11 @@
 
 const float U0 = 3600.0;
 
+int ADC_cal = 1700;  // Giá trị ADC khi pH = 6.86
+const float pH_Ref = 6.86; // Giá trị pH tham chiếu
+float Slope = -0.0675; // Giá trị Slope có thể điều chỉn
+int buffer[SCOUNT];  // Bộ đệm lưu giá trị ADC
+float temperature = 0;
 Preferences preferences;
 
 DFRobot_PH ph;
@@ -40,7 +43,8 @@ DallasTemperature sensors(&oneWire);
 
 int analogBuffer[SCOUNT];
 int analogBufferIndex = 0;
-float voltage = 0, tdsValue = 0;
+float tdsVoltage = 0, tdsValue = 0;
+bool continuousMeasurement = false;
 
 WebServer server(80);
 String workerUrl = "https://esp32-data-receiver.phucminh9395.workers.dev";
@@ -48,7 +52,6 @@ unsigned long lastUpdateTime = 0;
 unsigned long lastPollTime = 0;
 unsigned long lastDataSendTime = 0;
 bool sendDataEnabled = false;
-bool continuousMeasurement = false;
 #define HEARTBEAT_INTERVAL 5000 // 5 giây
 unsigned long lastHeartbeatTime = 0;
 void sendIPToWorker() {
@@ -64,18 +67,6 @@ void sendIPToWorker() {
         http.end();
     }
 }
-
-// void handleTestSensor() {
-//     float temperature = sensors.getTempCByIndex(0);
-//     int phRaw = analogRead(PH_PIN);
-//     float phVoltage = (phRaw / 4095.0) * 5000;
-//     float phValue = ph.readPH(phVoltage, temperature);
-//     int tdsRaw = analogRead(TDS_PIN);
-//     float voltage = (tdsRaw / 4095.0) * VREF;
-//     float tdsValue = 973 * voltage / (1.0 + 0.02 * (temperature - 25));
-//     int turRaw = analogRead(TUR_PIN);
-//     float turbidity = convertTurbidity(turRaw);
-// }
 
 void checkAndUpdateIP() {
     if (WiFi.status() != WL_CONNECTED) {
@@ -115,30 +106,64 @@ int getMedianNum(int bArray[], int iFilterLen) {
     return (iFilterLen & 1) > 0 ? bTab[(iFilterLen - 1) / 2] : (bTab[iFilterLen / 2] + bTab[iFilterLen / 2 - 1]) / 2;
 }
 
-String getSensorData() {
+float tempRead(){
     sensors.requestTemperatures();
-    float temperature = sensors.getTempCByIndex(0);
+    temperature = sensors.getTempCByIndex(0); // Đọc nhiệt độ (°C)
+    return temperature;
+}
 
+float tdsRead(){
+  // Lưu giá trị ADC vào bộ đệm
     analogBuffer[analogBufferIndex] = analogRead(TDS_PIN);
-    analogBufferIndex = (analogBufferIndex + 1) % SCOUNT;
-    int filteredADC = getMedianNum(analogBuffer, SCOUNT);
-    voltage = (filteredADC / 4095.0) * VREF;
-    // float tdsRaw = 973 * voltage;
-    // tdsValue = tdsRaw / (1.0 + 0.02 * (temperature - 25));
+    analogBufferIndex++;
+    if (analogBufferIndex == SCOUNT) analogBufferIndex = 0;
 
-    int phRaw = analogRead(PH_PIN);
-    float phVoltage = (phRaw / 4095.0) * 5000;
-    float phValue = ph.readPH(phVoltage, temperature);
-    int tdsRaw = analogRead(TDS_PIN);
-    float tdsVoltage = (tdsRaw / 4095.0) * VREF;
-    float tdsValue = 973 * tdsVoltage / (1.0 + 0.02 * (temperature - 25));
+    // Lọc giá trị ADC bằng thuật toán trung vị
+    int filteredADC = getMedianNum(analogBuffer, SCOUNT);
+
+    // Chuyển đổi ADC sang Volt
+    tdsVoltage = (filteredADC / 4095.0) * VREF;
+
+    // Tính TDS trước hiệu chỉnh
+    float tdsRaw = 973 * voltage; // Hệ số hiệu chỉnh ban đầu
+
+    // Hiệu chỉnh TDS theo nhiệt độ
+    float tdsValue = tdsRaw / (1.0 + 0.02 * (temperature - 25)); // Công thức bù nhiệt
+    return tdsValue;
+}
+
+float phRead() {
+  for (int i = 0; i < SCOUNT; i++) {
+    buffer[i] = analogRead(PH_PIN);
+    delay(10);  // Delay nhỏ để tránh nhiễu
+  }
+
+  int rawADC = getMedianNum(buffer, SCOUNT);  // Lọc giá trị ADC bằng trung vị
+  float Voltage = (rawADC / 4095.0) * VREF;   // Chuyển đổi ADC sang Volt
+
+  // Tính toán pH theo đường tuyến tính - FIXED FORMULA
+  float phValue = pH_Ref + Slope * (Voltage - ADC_cal / 4095.0 * VREF);
+  return phValue;
+}
+
+float turRead(){
     int turRaw = analogRead(TUR_PIN);
     float turbidity = convertTurbidity(turRaw);
+    if (turbidity < 0) { turbidity = 0;}
+    return turbidity;
+}
+
+String getSensorData() {
+
+    float temperature = tempRead();
+    float phValue = phRead();
+    float tdsValue = tdsRead();
+    float turbidity = turRead();
     DynamicJsonDocument doc(512);
-    doc["temperature"] = temperature;
-    doc["ph"] = phValue;
-    doc["tds"] = tdsValue;
-    doc["turbidity"] = turbidity;
+    doc["temperature"] = round(temperature * 100)/100;
+    doc["ph"] = round(phValue* 100)/100;
+    doc["tds"] = round(tdsValue* 100)/100;
+    doc["turbidity"] = round(turbidity* 100)/100;
     String json;
     serializeJson(doc, json);
     return json;
@@ -343,6 +368,22 @@ void setup() {
     
     // Gửi IP hiện tại lên worker
     sendIPToWorker();
+
+    pinMode(PH_PIN, INPUT);
+    pinMode(TEMP_PIN, INPUT);
+    pinMode(TDS_PIN, INPUT);
+    pinMode(TUR_PIN, INPUT);
+
+    pinMode(RELAY_PIN1, OUTPUT);
+    pinMode(RELAY_PIN2, OUTPUT);
+
+    sensors.begin();
+
+    digitalWrite(RELAY_PIN1,HIGH);
+    digitalWrite(RELAY_PIN2,HIGH);
+    delay(5000);
+    digitalWrite(RELAY_PIN1,LOW);
+    digitalWrite(RELAY_PIN2,LOW);
 }
 void sendHeartbeat() {
     if (WiFi.status() == WL_CONNECTED) {
@@ -357,7 +398,35 @@ void sendHeartbeat() {
 }
 void loop() {
     server.handleClient();
-    checkAndUpdateIP();
+    checkAndUpdateIP();    
+    if (Serial.available()) {
+        String input = Serial.readStringUntil('\n');  // Đọc chuỗi nhập vào
+        input.trim();  // Loại bỏ khoảng trắng
+
+        if (input.startsWith("S")) {  // Nhập "S-5.70"
+            float newSlope = input.substring(1).toFloat();
+            if (newSlope <= -10 || newSlope >= 0) {
+                Serial.println("❌ Lỗi: Slope không hợp lệ! Vui lòng nhập giá trị từ -10 đến 0.");
+            } else {
+                Slope = newSlope;
+                Serial.print("✅ Slope đã cập nhật: ");
+                Serial.println(Slope);
+            }
+        } 
+        else if (input.startsWith("A")) {  // Nhập "A1700"
+            int newADC_cal = input.substring(1).toInt();
+            if (newADC_cal < 1000 || newADC_cal > 3000) {
+                Serial.println("❌ Lỗi: ADC_cal không hợp lệ! Vui lòng nhập giá trị từ 1000 đến 3000.");
+            } else {
+                ADC_cal = newADC_cal;
+                Serial.print("✅ ADC_cal đã cập nhật: ");
+                Serial.println(ADC_cal);
+            }
+        } 
+        else {
+            Serial.println("❌ Lỗi: Cú pháp không hợp lệ! Hãy nhập S-5.80 hoặc A1700.");
+        }
+    }
     
     // Gửi heartbeat định kỳ
     if (millis() - lastHeartbeatTime > HEARTBEAT_INTERVAL) {
