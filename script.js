@@ -69,3 +69,5 @@ async function updateChart() {
 
 // Lấy dữ liệu mỗi 5 giây
 setInterval(getData, 10000);
+
+updateChart();
