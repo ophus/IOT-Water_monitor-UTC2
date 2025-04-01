@@ -47,7 +47,7 @@ function updateElement(id, value) {
 
 async function updateChart() {
   try {
-    const response = await fetch("https://your-worker-url/get_recent_data");
+    const response = await fetch("https://esp32-data-receiver.phucminh9395.workers.dev/get_recent_data");
     const result = await response.json();
     
     if (result.success) {
