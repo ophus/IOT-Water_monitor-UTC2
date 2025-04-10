@@ -11,7 +11,7 @@
 
 #define UPDATE_INTERVAL 600000 // 10 phút
 #define POLL_INTERVAL 10000    // 10 giây
-#define DATA_SEND_INTERVAL 5000  // Send data every 5 seconds
+#define DATA_SEND_INTERVAL 10000  // Send data every 10 seconds
 
 #define LED_PIN 2   
 #define PH_PIN 34   
@@ -28,8 +28,26 @@
 #define K_VALUE 1.0 * (900) 
 #define CONVERSION_FACTOR 0.5
 
-const float U0 = 3600.0;
+// Define các ngưỡng cho phép
+#define MIN_PH 6.5
+#define MAX_PH 8.5
+#define MIN_TDS 100
+#define MAX_TDS 500
+#define MIN_TEMP 20
+#define MAX_TEMP 35
+#define MIN_TURBIDITY 0
+#define MAX_TURBIDITY 50
+ 
+// Thêm các biến toàn cục
+#define MAX_READINGS 50  // Số lượng mẫu tối đa để tính trung bình
 
+float tempReadings[MAX_READINGS];
+float phReadings[MAX_READINGS];
+float tdsReadings[MAX_READINGS];
+float turReadings[MAX_READINGS];
+int readingCount = 0;
+
+const float U0 = 3600.0; 
 int ADC_cal = 1700;  // Giá trị ADC khi pH = 6.86
 const float pH_Ref = 6.86; // Giá trị pH tham chiếu
 float Slope = -0.0675; // Giá trị Slope có thể điều chỉn
@@ -52,8 +70,9 @@ unsigned long lastUpdateTime = 0;
 unsigned long lastPollTime = 0;
 unsigned long lastDataSendTime = 0;
 bool sendDataEnabled = false;
-#define HEARTBEAT_INTERVAL 5000 // 5 giây
+#define HEARTBEAT_INTERVAL 10000 // 5 giây
 unsigned long lastHeartbeatTime = 0;
+
 void sendIPToWorker() {
     if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
@@ -83,10 +102,24 @@ void checkAndUpdateIP() {
     }
 }
 
-float convertTurbidity(int analogValue) {
-    float Um = (analogValue / 4095.0) * 5000;
-    float f = Um / U0;
-    return (f >= 0.98 && f <= 1.000) ? 0 : map(f * 100, 0, 100, 1000, 0);
+// Hàm thêm dữ liệu vào mảng
+void addReadings(float temp, float ph, float tds, float turbidity) {
+    if (readingCount < MAX_READINGS) {
+        tempReadings[readingCount] = temp;
+        phReadings[readingCount] = ph;
+        tdsReadings[readingCount] = tds;
+        turReadings[readingCount] = turbidity;
+        readingCount++;
+    }
+}
+
+// Hàm tính giá trị trung bình
+float calculateAverage(float arr[], int size) {
+    float sum = 0;
+    for (int i = 0; i < size; i++) {
+        sum += arr[i];
+    }
+    return sum / size;
 }
 
 int getMedianNum(int bArray[], int iFilterLen) {
@@ -125,7 +158,7 @@ float tdsRead(){
     tdsVoltage = (filteredADC / 4095.0) * VREF;
 
     // Tính TDS trước hiệu chỉnh
-    float tdsRaw = 973 * voltage; // Hệ số hiệu chỉnh ban đầu
+    float tdsRaw = 973 * tdsVoltage; // Hệ số hiệu chỉnh ban đầu
 
     // Hiệu chỉnh TDS theo nhiệt độ
     float tdsValue = tdsRaw / (1.0 + 0.02 * (temperature - 25)); // Công thức bù nhiệt
@@ -139,11 +172,19 @@ float phRead() {
   }
 
   int rawADC = getMedianNum(buffer, SCOUNT);  // Lọc giá trị ADC bằng trung vị
-  float Voltage = (rawADC / 4095.0) * VREF;   // Chuyển đổi ADC sang Volt
+  float phVoltage = (rawADC / 4095.0) * VREF;   // Chuyển đổi ADC sang Volt
+
+  float real_phVoltage = phVoltage * ((10+20)/20);
 
   // Tính toán pH theo đường tuyến tính - FIXED FORMULA
-  float phValue = pH_Ref + Slope * (Voltage - ADC_cal / 4095.0 * VREF);
+  float phValue = pH_Ref + Slope * (real_phVoltage - ADC_cal / 4095.0 * VREF);
   return phValue;
+}
+
+float convertTurbidity(int analogValue) {
+    float Um = (analogValue / 4095.0) * 5000;
+    float f = Um / U0;
+    return (f >= 0.98 && f <= 1.000) ? 0 : map(f * 100, 0, 100, 1000, 0);
 }
 
 float turRead(){
@@ -155,15 +196,18 @@ float turRead(){
 
 String getSensorData() {
 
-    float temperature = tempRead();
-    float phValue = phRead();
-    float tdsValue = tdsRead();
-    float turbidity = turRead();
+    float temperature = round(tempRead() * 100)/100;
+    float phValue = round(phRead()* 100)/100;
+    float tdsValue = round(tdsRead()* 100)/100;
+    float turbidity = round(turRead()* 100)/100;
+
+    addReadings(temperature,phValue,tdsValue,turbidity);
+
     DynamicJsonDocument doc(512);
-    doc["temperature"] = round(temperature * 100)/100;
-    doc["ph"] = round(phValue* 100)/100;
-    doc["tds"] = round(tdsValue* 100)/100;
-    doc["turbidity"] = round(turbidity* 100)/100;
+    doc["temperature"] = temperature;
+    doc["ph"] = phValue;
+    doc["tds"] = tdsValue;
+    doc["turbidity"] = turbidity;
     String json;
     serializeJson(doc, json);
     return json;
@@ -194,7 +238,7 @@ void sendSensorDataToWorker() {
 }
 
 void pollForCommands() {
-    if (WiFi.status() != WL_CONNECTED) {
+    if (WiFi.status() != WL_CONNECTED) { // kiem tra ket noi wifi
         Serial.println("❌ WiFi không kết nối, không thể thăm dò lệnh!");
         return;
     }
@@ -276,6 +320,23 @@ String executeCommand(String action) {
     } else if (action == "stop") {
         continuousMeasurement = false;
         Serial.println("⏹️ Measurement stopped");
+
+        if (readingCount > 0) {
+            // Tính giá trị trung bình
+            float avgTemp = calculateAverage(tempReadings, readingCount);
+            float avgPH = calculateAverage(phReadings, readingCount);
+            float avgTDS = calculateAverage(tdsReadings, readingCount);
+            float avgTurbidity = calculateAverage(turReadings, readingCount);
+            
+            Serial.println("📊 Giá trị trung bình:");
+            Serial.println("🌡️ Nhiệt độ: " + String(avgTemp));
+            Serial.println("📈 pH: " + String(avgPH));
+            Serial.println("💧 TDS: " + String(avgTDS));
+            Serial.println("🌊 Độ đục: " + String(avgTurbidity));
+            
+            // Kiểm tra và điều khiển relay
+            checkAndControlRelays(avgTemp, avgPH, avgTDS, avgTurbidity);
+        }
         return "Measurement stopped";
     } else if (action == "restart") {
         Serial.println("🔄 Đang khởi động lại ESP32...");
@@ -340,7 +401,55 @@ void handleCommand() {
     }
 }
 
+void sendHeartbeat() {
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        http.begin(workerUrl + "/heartbeat");
+        http.addHeader("Content-Type", "application/json");
+        int httpResponseCode = http.POST("{}");
+        Serial.print("💓 Heartbeat sent, response code: ");
+        Serial.println(httpResponseCode);
+        http.end();
+    }
+}
 
+// Hàm kiểm tra và điều khiển relay
+void checkAndControlRelays(float avgTemp, float avgPH, float avgTDS, float avgTurbidity) {
+    bool isWithinRange = true;
+    
+    // Kiểm tra từng thông số
+    if (avgPH < MIN_PH || avgPH > MAX_PH) {
+        Serial.println("⚠️ pH nằm ngoài khoảng cho phép!");
+        isWithinRange = false;
+    }
+    if (avgTDS < MIN_TDS || avgTDS > MAX_TDS) {
+        Serial.println("⚠️ TDS nằm ngoài khoảng cho phép!");
+        isWithinRange = false;
+    }
+    if (avgTemp < MIN_TEMP || avgTemp > MAX_TEMP) {
+        Serial.println("⚠️ Nhiệt độ nằm ngoài khoảng cho phép!");
+        isWithinRange = false;
+    }
+    if (avgTurbidity < MIN_TURBIDITY || avgTurbidity > MAX_TURBIDITY) {
+        Serial.println("⚠️ Độ đục nằm ngoài khoảng cho phép!");
+        isWithinRange = false;
+    }
+    
+    // Điều khiển relay
+    if (isWithinRange) {
+        digitalWrite(RELAY_PIN1, LOW);
+        digitalWrite(RELAY_PIN2, HIGH);
+        Serial.println("✅ Thông số nằm trong khoảng cho phép. Kích hoạt RELAY_PIN2");
+        delay(2000);
+        digitalWrite(RELAY_PIN2, LOW);
+    } else {
+        digitalWrite(RELAY_PIN1, HIGH);
+        digitalWrite(RELAY_PIN2, LOW);
+        Serial.println("❌ Thông số nằm ngoài khoảng cho phép. Kích hoạt RELAY_PIN1");
+        delay(2000);
+        digitalWrite(RELAY_PIN1, LOW);
+    }
+}
 
 void setup() {
     Serial.begin(115200);
@@ -381,21 +490,11 @@ void setup() {
 
     digitalWrite(RELAY_PIN1,HIGH);
     digitalWrite(RELAY_PIN2,HIGH);
-    delay(5000);
+    delay(2000);
     digitalWrite(RELAY_PIN1,LOW);
     digitalWrite(RELAY_PIN2,LOW);
 }
-void sendHeartbeat() {
-    if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient http;
-        http.begin(workerUrl + "/heartbeat");
-        http.addHeader("Content-Type", "application/json");
-        int httpResponseCode = http.POST("{}");
-        Serial.print("💓 Heartbeat sent, response code: ");
-        Serial.println(httpResponseCode);
-        http.end();
-    }
-}
+
 void loop() {
     server.handleClient();
     checkAndUpdateIP();    
@@ -403,7 +502,21 @@ void loop() {
         String input = Serial.readStringUntil('\n');  // Đọc chuỗi nhập vào
         input.trim();  // Loại bỏ khoảng trắng
 
-        if (input.startsWith("S")) {  // Nhập "S-5.70"
+        if (input == "restart") {
+            Serial.println("🔄 Đang khởi động lại ESP...");
+            ESP.restart();
+        }
+        else if (input == "MT1"){
+            digitalWrite(RELAY_PIN1,HIGH);
+            delay(2000);
+            digitalWrite(RELAY_PIN1,LOW);
+        }
+        else if (input == "MT2"){
+            digitalWrite(RELAY_PIN2,HIGH);
+            delay(2000);
+            digitalWrite(RELAY_PIN2,LOW);
+        }
+        else if (input.startsWith("S")) {  // Nhập "S-5.70"
             float newSlope = input.substring(1).toFloat();
             if (newSlope <= -10 || newSlope >= 0) {
                 Serial.println("❌ Lỗi: Slope không hợp lệ! Vui lòng nhập giá trị từ -10 đến 0.");
@@ -413,7 +526,7 @@ void loop() {
                 Serial.println(Slope);
             }
         } 
-        else if (input.startsWith("A")) {  // Nhập "A1700"
+        else if (input.startsWith("A")) {
             int newADC_cal = input.substring(1).toInt();
             if (newADC_cal < 1000 || newADC_cal > 3000) {
                 Serial.println("❌ Lỗi: ADC_cal không hợp lệ! Vui lòng nhập giá trị từ 1000 đến 3000.");
@@ -424,17 +537,17 @@ void loop() {
             }
         } 
         else {
-            Serial.println("❌ Lỗi: Cú pháp không hợp lệ! Hãy nhập S-5.80 hoặc A1700.");
+            Serial.println("❌ Lỗi: Cú pháp không hợp lệ!");
         }
     }
-    
+
+
     // Gửi heartbeat định kỳ
     if (millis() - lastHeartbeatTime > HEARTBEAT_INTERVAL) {
         sendHeartbeat();
         lastHeartbeatTime = millis();
     }
     
-    // Phần còn lại của mã không thay đổi...
     if (millis() - lastPollTime > POLL_INTERVAL) {
         pollForCommands();
         lastPollTime = millis();
@@ -444,4 +557,3 @@ void loop() {
         sendSensorDataToWorker();
         lastDataSendTime = millis();
     }
-}
