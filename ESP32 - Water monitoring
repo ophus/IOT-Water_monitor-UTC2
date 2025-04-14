@@ -1,5 +1,4 @@
 #include <WiFiManager.h>
-#include <WebServer.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
@@ -9,9 +8,9 @@
 #include "DFRobot_PH.h"
 #include <EEPROM.h>
 
-#define UPDATE_INTERVAL 600000 // 10 phút
-#define POLL_INTERVAL 10000    // 10 giây
-#define DATA_SEND_INTERVAL 10000  // Send data every 10 seconds
+#define UPDATE_INTERVAL 30000
+#define POLL_INTERVAL 2000
+#define DATA_SEND_INTERVAL 2000
 
 #define LED_PIN 2   
 #define PH_PIN 34   
@@ -496,7 +495,6 @@ void setup() {
 }
 
 void loop() {
-    server.handleClient();
     checkAndUpdateIP();    
     if (Serial.available()) {
         String input = Serial.readStringUntil('\n');  // Đọc chuỗi nhập vào
