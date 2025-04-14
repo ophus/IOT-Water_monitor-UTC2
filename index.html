@@ -549,7 +549,7 @@
                 class="d-flex justify-content-between align-items-center mb-3">
                 <span><i class="fas fa-temperature-high me-2 text-danger"></i>
                   Nhiệt độ</span>
-                <span class="text-muted">20 - 30°C</span>
+                <span class="text-muted">20 - 355°C</span>
               </div>
               <div
                 class="d-flex justify-content-between align-items-center mb-3">
@@ -1044,7 +1044,7 @@
                   document.getElementById("turbiditySensorStatus").className = "mb-0 fw-bold text-danger";
               } else {
                   // Nếu kết nối, hiển thị trạng thái bình thường
-                  updateStatus("tempStatus", getStatusText(data.temperature, 20, 30), getStatusClass(data.temperature, 20, 30));
+                  updateStatus("tempStatus", getStatusText(data.temperature, 20, 35), getStatusClass(data.temperature, 20, 35));
                   updateStatus("phStatus", getStatusText(data.ph, 6.5, 8.5), getStatusClass(data.ph, 6.5, 8.5));
                   updateStatus("tdsStatus", getStatusText(data.tds, 100, 500, true), getStatusClass(data.tds, 100, 500, true));
                   updateStatus("turbidityStatus", getStatusText(data.turbidity, 0, 50, true), getStatusClass(data.turbidity, 0, 50, true));
