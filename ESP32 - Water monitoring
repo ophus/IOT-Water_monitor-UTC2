@@ -439,13 +439,13 @@ void checkAndControlRelays(float avgTemp, float avgPH, float avgTDS, float avgTu
         digitalWrite(RELAY_PIN1, LOW);
         digitalWrite(RELAY_PIN2, HIGH);
         Serial.println("✅ Thông số nằm trong khoảng cho phép. Kích hoạt RELAY_PIN2");
-        delay(2000);
+        delay(5000);
         digitalWrite(RELAY_PIN2, LOW);
     } else {
         digitalWrite(RELAY_PIN1, HIGH);
         digitalWrite(RELAY_PIN2, LOW);
         Serial.println("❌ Thông số nằm ngoài khoảng cho phép. Kích hoạt RELAY_PIN1");
-        delay(2000);
+        delay(5000);
         digitalWrite(RELAY_PIN1, LOW);
     }
 }
@@ -555,3 +555,4 @@ void loop() {
         sendSensorDataToWorker();
         lastDataSendTime = millis();
     }
+}
