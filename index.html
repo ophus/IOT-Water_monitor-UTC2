@@ -63,68 +63,47 @@
       overflow: hidden;
       z-index: 10;
     }
-      .btn-download {
-        position: relative;
-        overflow: hidden;
-        border: none;
-        border-radius: 12px;
-        padding: 0.6rem 1.2rem;
-        font-size: 0.8rem;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        background: linear-gradient(135deg, #4e54c8, #8f94fb);
-        color: white;
-        box-shadow: 0 4px 15px rgba(78, 84, 200, 0.3);
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 140px;
-        height: 40px;
-      }
-      
-      .btn-download:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(78, 84, 200, 0.4);
-      }
-      
-      .btn-download:active {
-        transform: translateY(0);
-      }
-      
-      .btn-download .btn-content,
-      .btn-download .btn-loading {
-        transition: all 0.3s ease;
-      }
-      
-      .btn-download .btn-loading {
-        position: absolute;
-        opacity: 0;
-        visibility: hidden;
-      }
-      
-      .btn-download.loading .btn-content {
-        opacity: 0;
-        visibility: hidden;
-      }
-      
-      .btn-download.loading .btn-loading {
-        opacity: 1;
-        visibility: visible;
-      }
-      
-      .btn-download.success {
-        background: linear-gradient(135deg, #00b09b, #96c93d);
-        box-shadow: 0 4px 15px rgba(0, 176, 155, 0.3);
-      }
-      
-      .btn-download.error {
-        background: linear-gradient(135deg, #ff416c, #ff4b2b);
-        box-shadow: 0 4px 15px rgba(255, 65, 108, 0.3);
-      }
+    .btn-download {
+      position: relative;
+      border: none;
+      border-radius: 50px;
+      padding: 8px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: white;
+      background: linear-gradient(135deg, #3a36db, #5753f0);
+      box-shadow: 0 4px 15px rgba(58, 54, 219, 0.3);
+      cursor: pointer;
+      transition: all 0.3s;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 150px;
+      height: 40px;
+    }
     
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(58, 54, 219, 0.4);
+    }
     
+    .btn-download:active {
+      transform: translateY(0);
+    }
+    
+    .btn-download .btn-loading {
+      display: none;
+    }
+    
+    .btn-download.loading .btn-content {
+      display: none;
+    }
+    
+    .btn-download.loading .btn-loading {
+      display: flex;
+      align-items: center;
+    }
     .dashboard-header::before {
       content: "";
       position: absolute;
@@ -597,7 +576,7 @@
                   <i class="fas fa-spinner fa-spin me-1"></i> ĐANG XỬ LÝ...
                 </span>
               </button>
-              <span class="badge real-time-badge" style="font-size: 0.8rem;">
+              <span class="badge real-time-badge">
                 <i class="fas fa-circle me-1"></i> DỮ LIỆU THỜI GIAN THỰC
               </span>
             </div>
@@ -1173,38 +1152,35 @@
             return "Bình thường";
         }
     }
-    async function downloadData(event) {
+    async function handleDownload(event) {
       event.preventDefault();
-      
-      const downloadBtn = document.getElementById("btnDownloadData");
-      downloadBtn.classList.add('loading');
+      const btn = document.getElementById('btnDownloadData');
       
       try {
-        console.log("Bắt đầu quá trình tải xuống...");
+        btn.classList.add('loading');
         
-        const response = await fetch(`${worker_url}/get_all_sensor_data`, {
+        // Thêm timestamp để tránh cache
+        const response = await fetch(`${worker_url}/get_all_sensor_data?t=${Date.now()}`, {
+          method: 'GET',
           headers: {
-            'Accept': 'application/json'
+            'Content-Type': 'application/json'
           }
         });
+    
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
-        if (!response.ok) {
-          throw new Error(`Lỗi HTTP: ${response.status}`);
+        const result = await response.json();
+        
+        if (!result.success || !result.data) {
+          throw new Error('Dữ liệu không hợp lệ');
         }
     
-        const result = await response.json();
-        console.log("Dữ liệu nhận được từ API:", result);
-    
-        if (result.success && result.data && result.data.length > 0) {
-          console.log(`Đang xử lý ${result.data.length} bản ghi...`);
-          
-          // Tạo dữ liệu CSV
-          const headers = ["Thời gian", "Ngày", "Giờ", "Nhiệt độ (°C)", "Độ pH", "TDS (PPM)", "Độ đục (NTU)"];
-          let csvContent = headers.join(",") + "\n";
-          
-          result.data.forEach(item => {
+        // Tạo CSV
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" +
+          "Thời gian,Ngày,Giờ,Nhiệt độ (°C),Độ pH,TDS (PPM),Độ đục (NTU)\n" +
+          result.data.map(item => {
             const date = new Date(item.timestamp);
-            const row = [
+            return [
               date.toISOString(),
               date.toLocaleDateString('vi-VN'),
               date.toLocaleTimeString('vi-VN'),
@@ -1212,59 +1188,28 @@
               item.ph || '0',
               item.tds || '0',
               item.turbidity || '0'
-            ];
-            csvContent += row.join(",") + "\n";
-          });
+            ].join(',');
+          }).join('\n');
     
-          // Tạo file CSV
-          const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          
-          // Tạo link tải xuống
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `water_quality_data_${new Date().toISOString().slice(0, 10)}.csv`;
-          link.style.display = 'none';
-          
-          // Thêm vào DOM và click tự động
-          document.body.appendChild(link);
-          link.click();
-          
-          // Dọn dẹp
-          setTimeout(() => {
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-          }, 100);
+        // Tạo link tải xuống
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `water_quality_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     
-          console.log("Tải xuống thành công!");
-          downloadBtn.classList.remove('loading');
-          downloadBtn.classList.add('success');
-          setTimeout(() => {
-            downloadBtn.classList.remove('success');
-          }, 2000);
-        } else {
-          console.warn("Không có dữ liệu để tải xuống");
-          downloadBtn.classList.remove('loading');
-          downloadBtn.classList.add('error');
-          setTimeout(() => {
-            downloadBtn.classList.remove('error');
-          }, 2000);
-          alert("Không tìm thấy dữ liệu để tải xuống");
-        }
       } catch (error) {
-        console.error("Lỗi khi tải dữ liệu:", error);
-        downloadBtn.classList.remove('loading');
-        downloadBtn.classList.add('error');
-        setTimeout(() => {
-          downloadBtn.classList.remove('error');
-        }, 2000);
-        alert(`Lỗi khi tải dữ liệu: ${error.message}`);
+        console.error('Lỗi tải dữ liệu:', error);
+        alert('Tải xuống thất bại: ' + error.message);
+      } finally {
+        btn.classList.remove('loading');
       }
     }
     
-    // Thêm sự kiện click cho nút tải xuống
-    document.getElementById("btnDownloadData").addEventListener("click", downloadData);
-    </script>
+    // Đăng ký sự kiện click ĐÚNG CÁCH
+    document.getElementById('btnDownloadData').addEventListener('click', handleDownload);
     // Lấy class trạng thái
     function getStatusClass(value, min, max, lowerIsBetter = false) {
         if (lowerIsBetter) {
