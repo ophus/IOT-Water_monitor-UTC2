@@ -525,10 +525,17 @@
           </div>
 
           <!-- Phần thời gian thực (bên phải) -->
+          <!-- Trong phần header, sửa lại phần thời gian thực thành: -->
           <div class="col-md-3 text-end">
-            <span class="badge real-time-badge" style="font-size: 0.8rem;">
-              <i class="fas fa-circle me-1"></i> DỮ LIỆU THỜI GIAN THỰC
-            </span>
+            <div class="d-flex justify-content-end align-items-center gap-2">
+              <button id="btnDownloadData" class="btn btn-sm btn-success"
+                style="font-size: 0.8rem;">
+                <i class="fas fa-download me-1"></i> Tải dữ liệu
+              </button>
+              <span class="badge real-time-badge" style="font-size: 0.8rem;">
+                <i class="fas fa-circle me-1"></i> DỮ LIỆU THỜI GIAN THỰC
+              </span>
+            </div>
           </div>
         </div>
         <div class="water-wave"></div>
@@ -1101,6 +1108,71 @@
             return "Bình thường";
         }
     }
+    // Hàm tải xuống dữ liệu
+async function downloadData() {
+  try {
+      // Hiển thị thông báo đang tải
+      const downloadBtn = document.getElementById("btnDownloadData");
+      const originalText = downloadBtn.innerHTML;
+      downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Đang tải...';
+      downloadBtn.disabled = true;
+      
+      // Gọi API để lấy dữ liệu
+      const response = await fetch(`${worker_url}/get_all_sensor_data`);
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.length > 0) {
+          // Tạo dữ liệu CSV
+          const headers = ["Thời gian", "Ngày", "Giờ", "Nhiệt độ (°C)", "Độ pH", "TDS (PPM)", "Độ đục (NTU)"];
+          let csvContent = headers.join(",") + "\n";
+          
+          result.data.forEach(item => {
+              const date = new Date(item.timestamp);
+              const dateStr = date.toLocaleDateString('vi-VN');
+              const timeStr = date.toLocaleTimeString('vi-VN');
+              
+              const row = [
+                  date.toISOString(),
+                  dateStr,
+                  timeStr,
+                  item.temperature || '',
+                  item.ph || '',
+                  item.tds || '',
+                  item.turbidity || ''
+              ];
+              csvContent += row.join(",") + "\n";
+          });
+          
+          // Tạo file CSV và tải xuống
+          const currentDate = new Date().toISOString().replace(/[:.]/g, "-");
+          const filename = `sensor_data_${currentDate}.csv`;
+          
+          const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', filename);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Hiển thị thông báo thành công
+          alert(`Đã tải xuống ${result.data.length} bản ghi dữ liệu cảm biến`);
+      } else {
+          alert("Không có dữ liệu để tải xuống hoặc có lỗi xảy ra");
+      }
+  } catch (error) {
+      console.error("Lỗi khi tải dữ liệu:", error);
+      alert("Có lỗi xảy ra khi tải dữ liệu: " + error.message);
+  } finally {
+      // Khôi phục trạng thái nút
+      const downloadBtn = document.getElementById("btnDownloadData");
+      downloadBtn.innerHTML = originalText;
+      downloadBtn.disabled = false;
+  }
+}
+// Thêm sự kiện click cho nút tải xuống
+document.getElementById("btnDownloadData").addEventListener("click", downloadData);
 
     // Lấy class trạng thái
     function getStatusClass(value, min, max, lowerIsBetter = false) {
