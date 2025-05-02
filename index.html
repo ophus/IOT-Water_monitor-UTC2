@@ -1152,64 +1152,78 @@
             return "Bình thường";
         }
     }
-    async function handleDownload(event) {
-      event.preventDefault();
-      const btn = document.getElementById('btnDownloadData');
-      
-      try {
-        btn.classList.add('loading');
-        
-        // Thêm timestamp để tránh cache
-        const response = await fetch(`${worker_url}/get_all_sensor_data?t=${Date.now()}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
+    // Sửa lại hàm xử lý download
+async function handleDownload() {
+  const btn = document.getElementById('btnDownloadData');
+  
+  try {
+    // Hiển thị trạng thái đang tải
+    btn.classList.add('loading');
     
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        
-        const result = await response.json();
-        
-        if (!result.success || !result.data) {
-          throw new Error('Dữ liệu không hợp lệ');
-        }
-    
-        // Tạo CSV
-        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" +
-          "Thời gian,Ngày,Giờ,Nhiệt độ (°C),Độ pH,TDS (PPM),Độ đục (NTU)\n" +
-          result.data.map(item => {
-            const date = new Date(item.timestamp);
-            return [
-              date.toISOString(),
-              date.toLocaleDateString('vi-VN'),
-              date.toLocaleTimeString('vi-VN'),
-              item.temperature || '0',
-              item.ph || '0',
-              item.tds || '0',
-              item.turbidity || '0'
-            ].join(',');
-          }).join('\n');
-    
-        // Tạo link tải xuống
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement('a');
-        link.setAttribute('href', encodedUri);
-        link.setAttribute('download', `water_quality_${new Date().toISOString().slice(0,10)}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    
-      } catch (error) {
-        console.error('Lỗi tải dữ liệu:', error);
-        alert('Tải xuống thất bại: ' + error.message);
-      } finally {
-        btn.classList.remove('loading');
+    // Gọi API để lấy dữ liệu
+    const response = await fetch(`${worker_url}/get_all_sensor_data?t=${Date.now()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
       }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Lỗi HTTP! Trạng thái: ${response.status}`);
     }
     
-    // Đăng ký sự kiện click ĐÚNG CÁCH
-    document.getElementById('btnDownloadData').addEventListener('click', handleDownload);
+    const result = await response.json();
+    
+    if (!result.success || !result.data || !Array.isArray(result.data)) {
+      throw new Error('Định dạng dữ liệu không hợp lệ');
+    }
+
+    // Tạo nội dung CSV
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" +
+      "Thời gian,Ngày,Giờ,Nhiệt độ (°C),Độ pH,TDS (PPM),Độ đục (NTU)\n" +
+      result.data.map(item => {
+        const date = new Date(item.timestamp);
+        return [
+          date.toISOString(),
+          date.toLocaleDateString('vi-VN'),
+          date.toLocaleTimeString('vi-VN'),
+          item.temperature || '0',
+          item.ph || '0',
+          item.tds || '0',
+          item.turbidity || '0'
+        ].join(',');
+      }).join('\n');
+
+    // Tạo và kích hoạt link download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `water_quality_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+  } catch (error) {
+    console.error('Lỗi tải dữ liệu:', error);
+    alert('Tải xuống thất bại: ' + error.message);
+  } finally {
+    // Đảm bảo trạng thái loading được gỡ bỏ
+    btn.classList.remove('loading');
+  }
+}
+
+// Đăng ký sự kiện click cho nút tải xuống
+document.addEventListener('DOMContentLoaded', function() {
+  const downloadBtn = document.getElementById('btnDownloadData');
+  if (downloadBtn) {
+    // Xóa tất cả event listener cũ (nếu có)
+    const newBtn = downloadBtn.cloneNode(true);
+    downloadBtn.parentNode.replaceChild(newBtn, downloadBtn);
+    
+    // Thêm event listener mới
+    newBtn.addEventListener('click', handleDownload);
+  }
+});
     // Lấy class trạng thái
     function getStatusClass(value, min, max, lowerIsBetter = false) {
         if (lowerIsBetter) {
