@@ -1110,66 +1110,84 @@
     }
     // Hàm tải xuống dữ liệu
 async function downloadData() {
-  try {
-      // Hiển thị thông báo đang tải
-      const downloadBtn = document.getElementById("btnDownloadData");
-      const originalText = downloadBtn.innerHTML;
-      downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Đang tải...';
-      downloadBtn.disabled = true;
-      
-      // Gọi API để lấy dữ liệu
-      const response = await fetch(`${worker_url}/get_all_sensor_data`);
-      const result = await response.json();
-      
-      if (result.success && result.data && result.data.length > 0) {
-          // Tạo dữ liệu CSV
-          const headers = ["Thời gian", "Ngày", "Giờ", "Nhiệt độ (°C)", "Độ pH", "TDS (PPM)", "Độ đục (NTU)"];
-          let csvContent = headers.join(",") + "\n";
-          
-          result.data.forEach(item => {
-              const date = new Date(item.timestamp);
-              const dateStr = date.toLocaleDateString('vi-VN');
-              const timeStr = date.toLocaleTimeString('vi-VN');
-              
-              const row = [
-                  date.toISOString(),
-                  dateStr,
-                  timeStr,
-                  item.temperature || '',
-                  item.ph || '',
-                  item.tds || '',
-                  item.turbidity || ''
-              ];
-              csvContent += row.join(",") + "\n";
-          });
-          
-          // Tạo file CSV và tải xuống
-          const currentDate = new Date().toISOString().replace(/[:.]/g, "-");
-          const filename = `sensor_data_${currentDate}.csv`;
-          
-          const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.setAttribute('download', filename);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          // Hiển thị thông báo thành công
-          alert(`Đã tải xuống ${result.data.length} bản ghi dữ liệu cảm biến`);
-      } else {
-          alert("Không có dữ liệu để tải xuống hoặc có lỗi xảy ra");
-      }
-  } catch (error) {
-      console.error("Lỗi khi tải dữ liệu:", error);
-      alert("Có lỗi xảy ra khi tải dữ liệu: " + error.message);
-  } finally {
-      // Khôi phục trạng thái nút
-      const downloadBtn = document.getElementById("btnDownloadData");
-      downloadBtn.innerHTML = originalText;
-      downloadBtn.disabled = false;
-  }
+    try {
+        console.log("Bắt đầu quá trình tải xuống...");
+        
+        const downloadBtn = document.getElementById("btnDownloadData");
+        const originalText = downloadBtn.innerHTML;
+        downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Đang tải...';
+        downloadBtn.disabled = true;
+
+        // Kiểm tra worker_url có tồn tại không
+        if (!window.worker_url) {
+            window.worker_url = "https://esp32-data-receiver.phucminh9395.workers.dev";
+            console.log("Sử dụng worker_url mặc định:", worker_url);
+        }
+
+        console.log("Đang gọi API để lấy dữ liệu...");
+        const response = await fetch(`${worker_url}/get_all_sensor_data`);
+        
+        if (!response.ok) {
+            throw new Error(`Lỗi HTTP: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log("Dữ liệu nhận được từ API:", result);
+
+        if (result.success && result.data && result.data.length > 0) {
+            console.log(`Đang xử lý ${result.data.length} bản ghi...`);
+            
+            // Tạo dữ liệu CSV
+            const headers = ["Thời gian", "Ngày", "Giờ", "Nhiệt độ (°C)", "Độ pH", "TDS (PPM)", "Độ đục (NTU)"];
+            let csvContent = headers.join(",") + "\n";
+            
+            result.data.forEach(item => {
+                const date = new Date(item.timestamp);
+                const row = [
+                    date.toISOString(),
+                    date.toLocaleDateString('vi-VN'),
+                    date.toLocaleTimeString('vi-VN'),
+                    item.temperature || '0',
+                    item.ph || '0',
+                    item.tds || '0',
+                    item.turbidity || '0'
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            // Tạo file CSV
+            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            // Tạo link tải xuống
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `sensor_data_${new Date().toISOString().slice(0, 10)}.csv`;
+            
+            // Thêm vào DOM và click tự động
+            document.body.appendChild(link);
+            link.click();
+            
+            // Dọn dẹp
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+
+            console.log("Tải xuống thành công!");
+            alert(`Đã tải xuống thành công ${result.data.length} bản ghi`);
+        } else {
+            console.warn("Không có dữ liệu để tải xuống");
+            alert("Không tìm thấy dữ liệu để tải xuống");
+        }
+    } catch (error) {
+        console.error("Lỗi khi tải dữ liệu:", error);
+        alert(`Lỗi khi tải dữ liệu: ${error.message}`);
+    } finally {
+        const downloadBtn = document.getElementById("btnDownloadData");
+        downloadBtn.innerHTML = originalText;
+        downloadBtn.disabled = false;
+    }
 }
 // Thêm sự kiện click cho nút tải xuống
 document.getElementById("btnDownloadData").addEventListener("click", downloadData);
