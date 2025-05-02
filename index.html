@@ -63,47 +63,7 @@
       overflow: hidden;
       z-index: 10;
     }
-    .btn-download {
-      position: relative;
-      border: none;
-      border-radius: 50px;
-      padding: 8px 20px;
-      font-size: 14px;
-      font-weight: 600;
-      color: white;
-      background: linear-gradient(135deg, #3a36db, #5753f0);
-      box-shadow: 0 4px 15px rgba(58, 54, 219, 0.3);
-      cursor: pointer;
-      transition: all 0.3s;
-      overflow: hidden;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 150px;
-      height: 40px;
-    }
     
-    .btn-download:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(58, 54, 219, 0.4);
-    }
-    
-    .btn-download:active {
-      transform: translateY(0);
-    }
-    
-    .btn-download .btn-loading {
-      display: none;
-    }
-    
-    .btn-download.loading .btn-content {
-      display: none;
-    }
-    
-    .btn-download.loading .btn-loading {
-      display: flex;
-      align-items: center;
-    }
     .dashboard-header::before {
       content: "";
       position: absolute;
@@ -565,21 +525,10 @@
           </div>
 
           <!-- Phần thời gian thực (bên phải) -->
-          <!-- Trong phần header, thay thế nút tải xuống bằng đoạn code này -->
           <div class="col-md-3 text-end">
-            <div class="d-flex justify-content-end align-items-center gap-2">
-              <button id="btnDownloadData" class="btn-download">
-                <span class="btn-content">
-                  <i class="fas fa-download me-1"></i> TẢI DỮ LIỆU
-                </span>
-                <span class="btn-loading">
-                  <i class="fas fa-spinner fa-spin me-1"></i> ĐANG XỬ LÝ...
-                </span>
-              </button>
-              <span class="badge real-time-badge">
-                <i class="fas fa-circle me-1"></i> DỮ LIỆU THỜI GIAN THỰC
-              </span>
-            </div>
+            <span class="badge real-time-badge" style="font-size: 0.8rem;">
+              <i class="fas fa-circle me-1"></i> DỮ LIỆU THỜI GIAN THỰC
+            </span>
           </div>
         </div>
         <div class="water-wave"></div>
@@ -600,7 +549,7 @@
                 class="d-flex justify-content-between align-items-center mb-3">
                 <span><i class="fas fa-temperature-high me-2 text-danger"></i>
                   Nhiệt độ</span>
-                <span class="text-muted">20 - 35°C</span>
+                <span class="text-muted">20 - 355°C</span>
               </div>
               <div
                 class="d-flex justify-content-between align-items-center mb-3">
@@ -670,7 +619,6 @@
             </div>
           </div>
         </div>
-
         <!-- Middle Column -->
         <div class="col-lg-4" data-aos="fade-up" data-aos-duration="800">
           <!-- Current Sensor Values -->
@@ -784,9 +732,15 @@
             <div class="card-body">
               <ul class="nav nav-tabs mb-3" id="chartTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link active" id="temp-tab"
-                    data-bs-toggle="tab" data-bs-target="#temp-chart"
-                    type="button" role="tab">Nhiệt độ</button>
+                  <button class="nav-link active" id="overview-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#overview-chart" type="button"
+                    role="tab">Tổng quát</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="temp-tab" data-bs-toggle="tab"
+                    data-bs-target="#temp-chart" type="button" role="tab">Nhiệt
+                    độ</button>
                 </li>
                 <li class="nav-item" role="presentation">
                   <button class="nav-link" id="ph-tab" data-bs-toggle="tab"
@@ -800,13 +754,19 @@
                 </li>
                 <li class="nav-item" role="presentation">
                   <button class="nav-link" id="turbidity-tab"
-                    data-bs-toggle="tab" data-bs-target="#turbidity-chart"
-                    type="button" role="tab">Độ đục</button>
+                    data-bs-toggle="tab"
+                    data-bs-target="#turbidity-chart" type="button"
+                    role="tab">Độ đục</button>
                 </li>
               </ul>
               <div class="tab-content" id="chartTabContent">
-                <div class="tab-pane fade show active" id="temp-chart"
+                <div class="tab-pane fade show active" id="overview-chart"
                   role="tabpanel">
+                  <div class="chart-container">
+                    <canvas id="overviewChart"></canvas>
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="temp-chart" role="tabpanel">
                   <div class="chart-container">
                     <canvas id="tempChart"></canvas>
                   </div>
@@ -821,8 +781,7 @@
                     <canvas id="tdsChart"></canvas>
                   </div>
                 </div>
-                <div class="tab-pane fade" id="turbidity-chart"
-                  role="tabpanel">
+                <div class="tab-pane fade" id="turbidity-chart" role="tabpanel">
                   <div class="chart-container">
                     <canvas id="turbidityChart"></canvas>
                   </div>
@@ -893,6 +852,91 @@
       </div>
     </div>
 
+    <!-- Thêm vào phần Left Column, sau card "System Control" -->
+
+    <div class="card mb-4" data-aos="fade-right" data-aos-duration="800">
+      <div class="card-header info">
+        <i class="fas fa-download me-2"></i> TẢI XUẤT DỮ LIỆU
+      </div>
+      <div class="card-body">
+        <div class="d-grid gap-3">
+          <button id="btnDownloadData" class="btn btn-success control-btn py-3">
+            <i class="fas fa-file-excel me-2"></i> Xuất file Excel
+            <span class="download-badge">Mới nhất</span>
+          </button>
+          <button id="btnDownloadCSV" class="btn btn-primary control-btn py-3">
+            <i class="fas fa-file-csv me-2"></i> Xuất file CSV
+            <span class="download-badge">Đầy đủ</span>
+          </button>
+          <button id="btnDownloadReport"
+            class="btn btn-warning control-btn py-3">
+            <i class="fas fa-file-pdf me-2"></i> Xuất báo cáo PDF
+            <span class="download-badge">Chuyên nghiệp</span>
+          </button>
+        </div>
+
+        <div class="mt-4">
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="limitDataSwitch"
+              checked>
+            <label class="form-check-label" for="limitDataSwitch">Giới hạn 100
+              bản ghi mới nhất</label>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label small text-muted">Chọn khoảng thời
+              gian:</label>
+            <div class="input-daterange input-group">
+              <input type="date" class="form-control form-control-sm"
+                id="startDate" name="start">
+              <span class="input-group-text bg-transparent">đến</span>
+              <input type="date" class="form-control form-control-sm"
+                id="endDate" name="end">
+            </div>
+          </div>
+        </div>
+
+        <!-- Download Progress - Đã được cải tiến -->
+        <div class="mt-4" id="downloadProgressContainer" style="display: none;">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="text-uppercase text-muted mb-0"><small>Tiến trình tải
+                xuống</small></h6>
+            <span id="downloadPercentage"
+              class="badge bg-primary rounded-pill">0%</span>
+          </div>
+
+          <div class="progress progress-thin mb-2">
+            <div id="downloadProgress" class="progress-bar bg-gradient-progress"
+              role="progressbar" style="width: 0%"></div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <span id="downloadStatusText" class="small fw-bold">Đang chuẩn
+                bị...</span>
+              <span id="downloadSpeed" class="small text-muted ms-2"></span>
+            </div>
+            <span id="downloadTimeRemaining" class="small text-muted"></span>
+          </div>
+
+          <div id="downloadDetails"
+            class="mt-2 small text-muted d-flex justify-content-between">
+            <span id="downloadRecordsCount">0 bản ghi</span>
+            <span id="downloadFileSize">0 MB</span>
+          </div>
+
+          <div id="downloadComplete" class="mt-3 text-center"
+            style="display: none;">
+            <div class="alert alert-success py-2 px-3 mb-0">
+              <i class="fas fa-check-circle me-2"></i>
+              <span>Tải xuống hoàn tất!</span>
+              <a href="#" id="downloadOpenFile"
+                class="ms-2 text-decoration-none">Mở file</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- Footer -->
     <footer class="footer">
       <div class="container">
@@ -947,6 +991,28 @@
       duration: 800,
       once: true
     });
+    // Thêm style cho progress bar gradient
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .bg-gradient-progress {
+        background: linear-gradient(90deg, #00b09b, #96c93d);
+        background-size: 200% 200%;
+        animation: gradient 2s ease infinite;
+      }
+      .download-badge {
+        font-size: 0.6rem;
+        padding: 0.2rem 0.4rem;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.2);
+        margin-left: 0.5rem;
+      }
+      @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+    `;
+    document.head.appendChild(style);
 
     const worker_url = "https://esp32-data-receiver.phucminh9395.workers.dev";
     let isMeasuring = false;
@@ -990,6 +1056,7 @@
     });
 
     // Khởi tạo biểu đồ
+    const overviewChart = createOverviewChart("overviewChart");
     const tempChart = createChart("tempChart", "Nhiệt độ (°C)", "rgba(220, 53, 69)", "rgba(220, 53, 69, 0.1)");
     const phChart = createChart("phChart", "Độ pH", "rgba(13, 110, 253)", "rgba(13, 110, 253, 0.1)");
     const tdsChart = createChart("tdsChart", "TDS (ppm)", "rgba(255, 193, 7)", "rgba(255, 193, 7, 0.1)");
@@ -1051,21 +1118,6 @@
               const now = new Date();
               document.getElementById("lastUpdate").textContent = now.toLocaleTimeString();
               
-              // Kiểm tra trạng thái kết nối ESP32
-              const esp32Connected = result.esp32Connected !== false;
-              
-              // Cập nhật trạng thái kết nối trên giao diện
-              const connectionStatus = document.getElementById("connectionStatus");
-              if (connectionStatus) {
-                  if (esp32Connected) {
-                      connectionStatus.className = "connection-status connected";
-                      connectionStatus.querySelector("span:last-child").textContent = "Đang kết nối";
-                  } else {
-                      connectionStatus.className = "connection-status disconnected";
-                      connectionStatus.querySelector("span:last-child").textContent = "Mất kết nối";
-                  }
-              }
-              
               // Cập nhật giao diện với dữ liệu nhận được
               updateElement("tempValue", `${data.temperature} °C`);
               updateElement("phValue", `${data.ph}`);
@@ -1078,40 +1130,20 @@
               updateProgress("tdsProgress", data.tds, 0, 1000);
               updateProgress("turbidityProgress", data.turbidity, 0, 10);
               
-              // Nếu ESP32 không kết nối, hiển thị "Mất kết nối" cho tất cả các trạng thái
-              if (!esp32Connected) {
-                  updateStatus("tempStatus", "Mất kết nối", "danger");
-                  updateStatus("phStatus", "Mất kết nối", "danger");
-                  updateStatus("tdsStatus", "Mất kết nối", "danger");
-                  updateStatus("turbidityStatus", "Mất kết nối", "danger");
-                  
-                  document.getElementById("tempSensorStatus").textContent = "Ngắt kết nối";
-                  document.getElementById("tempSensorStatus").className = "mb-0 fw-bold text-danger";
-                  document.getElementById("phSensorStatus").textContent = "Ngắt kết nối";
-                  document.getElementById("phSensorStatus").className = "mb-0 fw-bold text-danger";
-                  document.getElementById("tdsSensorStatus").textContent = "Ngắt kết nối";
-                  document.getElementById("tdsSensorStatus").className = "mb-0 fw-bold text-danger";
-                  document.getElementById("turbiditySensorStatus").textContent = "Ngắt kết nối";
-                  document.getElementById("turbiditySensorStatus").className = "mb-0 fw-bold text-danger";
-              } else {
-                  // Nếu kết nối, hiển thị trạng thái bình thường
-                  updateStatus("tempStatus", getStatusText(data.temperature, 20, 35), getStatusClass(data.temperature, 20, 35));
-                  updateStatus("phStatus", getStatusText(data.ph, 6.5, 8.5), getStatusClass(data.ph, 6.5, 8.5));
-                  updateStatus("tdsStatus", getStatusText(data.tds, 100, 500, true), getStatusClass(data.tds, 100, 500, true));
-                  updateStatus("turbidityStatus", getStatusText(data.turbidity, 0, 50, true), getStatusClass(data.turbidity, 0, 50, true));
-                  
-                  document.getElementById("tempSensorStatus").textContent = "Hoạt động";
-                  document.getElementById("tempSensorStatus").className = "mb-0 fw-bold text-success";
-                  document.getElementById("phSensorStatus").textContent = "Hoạt động";
-                  document.getElementById("phSensorStatus").className = "mb-0 fw-bold text-success";
-                  document.getElementById("tdsSensorStatus").textContent = "Hoạt động";
-                  document.getElementById("tdsSensorStatus").className = "mb-0 fw-bold text-success";
-                  document.getElementById("turbiditySensorStatus").textContent = "Hoạt động";
-                  document.getElementById("turbiditySensorStatus").className = "mb-0 fw-bold text-success";
-              }
+              // Cập nhật trạng thái
+              updateStatus("tempStatus", getStatusText(data.temperature, 20, 35), getStatusClass(data.temperature, 20, 35));
+              updateStatus("phStatus", getStatusText(data.ph, 6.5, 8.5), getStatusClass(data.ph, 6.5, 8.5));
+              updateStatus("tdsStatus", getStatusText(data.tds, 100, 500, true), getStatusClass(data.tds, 100, 500, true));
+              updateStatus("turbidityStatus", getStatusText(data.turbidity, 0, 50, true), getStatusClass(data.turbidity, 0, 50, true));
               
               // Cập nhật biểu đồ
               const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+              updateChart(overviewChart, timeString, [
+                data.temperature,
+                data.ph,
+                data.tds,
+                data.turbidity
+              ]);
               updateChart(tempChart, timeString, data.temperature);
               updateChart(phChart, timeString, data.ph);
               updateChart(tdsChart, timeString, data.tds);
@@ -1120,6 +1152,121 @@
       } catch (error) {
           console.error("❌ Lỗi lấy dữ liệu từ Worker:", error);
       }
+    }
+
+    // Cập nhật hàm updateChart để hỗ trợ biểu đồ tổng quan
+    function updateChart(chart, label, values) {
+      chart.data.labels.push(label);
+      
+      // Nếu là biểu đồ tổng quan (có nhiều datasets)
+      if (Array.isArray(values)) {
+        values.forEach((value, index) => {
+          chart.data.datasets[index].data.push(value);
+        });
+      } 
+      // Nếu là biểu đồ đơn lẻ
+      else {
+        chart.data.datasets[0].data.push(values);
+      }
+      
+      // Giới hạn số lượng điểm dữ liệu hiển thị
+      if (chart.data.labels.length > 10) {
+        chart.data.labels.shift();
+        chart.data.datasets.forEach(dataset => {
+          dataset.data.shift();
+        });
+      }
+      
+      chart.update();
+    }
+
+    // Tạo biểu đồ tổng quan
+    function createOverviewChart(canvasId) {
+      const ctx = document.getElementById(canvasId).getContext("2d");
+      return new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Nhiệt độ (°C)",
+              data: [],
+              borderColor: "rgba(220, 53, 69)",
+              backgroundColor: "rgba(220, 53, 69, 0.1)",
+              borderWidth: 2,
+              tension: 0.3,
+              fill: false,
+              pointRadius: 0
+            },
+            {
+              label: "Độ pH",
+              data: [],
+              borderColor: "rgba(13, 110, 253)",
+              backgroundColor: "rgba(13, 110, 253, 0.1)",
+              borderWidth: 2,
+              tension: 0.3,
+              fill: false,
+              pointRadius: 0
+            },
+            {
+              label: "TDS (ppm)",
+              data: [],
+              borderColor: "rgba(255, 193, 7)",
+              backgroundColor: "rgba(255, 193, 7, 0.1)",
+              borderWidth: 2,
+              tension: 0.3,
+              fill: false,
+              pointRadius: 0
+            },
+            {
+              label: "Độ đục (NTU)",
+              data: [],
+              borderColor: "rgba(25, 135, 84)",
+              backgroundColor: "rgba(25, 135, 84, 0.1)",
+              borderWidth: 2,
+              tension: 0.3,
+              fill: false,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 12,
+                padding: 20,
+                usePointStyle: true
+              }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                display: false
+              }
+            },
+            y: {
+              beginAtZero: false,
+              grid: {
+                color: "rgba(0, 0, 0, 0.05)"
+              }
+            }
+          },
+          interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false
+          }
+        }
+      });
     }
 
     // Cập nhật thanh tiến trình
@@ -1139,6 +1286,277 @@
         element.className = `status-badge status-${statusClass}`;
       }
     }
+    // Hàm tải xuống dữ liệu
+// Hàm tải xuống dữ liệu được cải tiến
+async function downloadData(format = 'excel') {
+  const limitRecords = document.getElementById('limitDataSwitch').checked;
+  const progressContainer = document.getElementById('downloadProgressContainer');
+  const progressBar = document.getElementById('downloadProgress');
+  const statusText = document.getElementById('downloadStatusText');
+  const percentageText = document.getElementById('downloadPercentage');
+  const downloadDetails = document.getElementById('downloadDetails');
+  const downloadComplete = document.getElementById('downloadComplete');
+  const downloadRecordsCount = document.getElementById('downloadRecordsCount');
+  const downloadFileSize = document.getElementById('downloadFileSize');
+  const downloadSpeed = document.getElementById('downloadSpeed');
+  const downloadTimeRemaining = document.getElementById('downloadTimeRemaining');
+  
+  // Ẩn thông báo hoàn thành nếu có
+  downloadComplete.style.display = 'none';
+  
+  // Hiển thị thanh tiến trình với hiệu ứng
+  progressContainer.style.display = 'block';
+  progressContainer.classList.add('animate__animated', 'animate__fadeIn');
+  statusText.textContent = 'Đang kết nối đến server...';
+  percentageText.textContent = '0%';
+  progressBar.style.width = '0%';
+  progressBar.classList.remove('bg-danger', 'bg-success');
+  progressBar.classList.add('bg-gradient-progress');
+  downloadRecordsCount.textContent = '0 bản ghi';
+  downloadFileSize.textContent = '0 MB';
+  downloadSpeed.textContent = '';
+  downloadTimeRemaining.textContent = '';
+  
+  // Thêm hiệu ứng loading cho nút
+  const btn = format === 'excel' ? document.getElementById('btnDownloadData') : 
+              format === 'csv' ? document.getElementById('btnDownloadCSV') : 
+              document.getElementById('btnDownloadReport');
+  const originalContent = btn.innerHTML;
+  btn.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>${btn.textContent.trim()}`;
+  btn.disabled = true;
+  
+  try {
+      // Bước 1: Lấy danh sách keys từ Redis
+      updateDownloadStatus('Đang quét dữ liệu từ Redis...', 5);
+      
+      let cursor = "0";
+      let allKeys = [];
+      let scanCount = 0;
+      const startTime = performance.now();
+      
+      while (true) {
+          scanCount++;
+          const scanUrl = `${worker_url}/scan/${cursor}?count=1000`;
+          const res = await fetch(scanUrl);
+          const data = await res.json();
+          
+          cursor = data.result[0];
+          const keys = data.result[1];
+          allKeys = [...allKeys, ...keys];
+          
+          // Tính toán tốc độ tải
+          const elapsedTime = (performance.now() - startTime) / 1000;
+          const recordsPerSecond = Math.round(allKeys.length / elapsedTime);
+          
+          // Cập nhật tiến trình
+          const progress = Math.min(20, scanCount * 5);
+          updateDownloadStatus(`Đã quét ${allKeys.length} keys...`, progress, {
+              speed: `${recordsPerSecond} bản ghi/giây`,
+              records: allKeys.length,
+              timeRemaining: formatTime((allKeys.length / recordsPerSecond) * (100 - progress) / progress)
+          });
+          
+          if (cursor === "0") break;
+      }
+      
+      // Lọc keys cảm biến
+      updateDownloadStatus('Đang lọc dữ liệu cảm biến...', 25);
+      
+      const sensorKeys = allKeys.filter(key => key.startsWith('sensor_data_'));
+      downloadRecordsCount.textContent = `${sensorKeys.length} bản ghi`;
+      
+      // Sắp xếp và giới hạn nếu cần
+      updateDownloadStatus('Đang sắp xếp dữ liệu...', 30);
+      
+      const sortedKeys = sensorKeys.sort((a, b) => 
+          parseInt(b.replace('sensor_data_', '')) - parseInt(a.replace('sensor_data_', '')));
+      
+      const selectedKeys = limitRecords ? sortedKeys.slice(0, 100) : sortedKeys;
+      downloadRecordsCount.textContent = `${selectedKeys.length} bản ghi`;
+      
+      // Tải dữ liệu từ các keys
+      updateDownloadStatus('Đang tải dữ liệu...', 40);
+      
+      const batchSize = 20;
+      const totalBatches = Math.ceil(selectedKeys.length / batchSize);
+      let sensorData = [];
+      let totalSize = 0;
+      
+      for (let i = 0; i < totalBatches; i++) {
+          const batchStart = i * batchSize;
+          const batchEnd = Math.min((i + 1) * batchSize, selectedKeys.length);
+          const batchKeys = selectedKeys.slice(batchStart, batchEnd);
+          
+          // Tạo các promise để thực hiện đồng thời
+          const batchPromises = batchKeys.map(key => 
+              fetch(`${worker_url}/get/${key}`)
+                  .then(res => res.json())
+                  .then(data => ({ key, value: data.result }))
+          );
+          
+          // Chờ batch hiện tại hoàn thành
+          const batchResults = await Promise.all(batchPromises);
+          sensorData = [...sensorData, ...batchResults];
+          totalSize += batchResults.reduce((sum, item) => sum + (item.value ? item.value.length : 0), 0);
+          
+          // Cập nhật tiến trình
+          const progress = 40 + (i / totalBatches * 50);
+          const elapsedTime = (performance.now() - startTime) / 1000;
+          const recordsPerSecond = Math.round(sensorData.length / elapsedTime);
+          
+          updateDownloadStatus(`Đã tải ${sensorData.length}/${selectedKeys.length} bản ghi...`, progress, {
+              speed: `${recordsPerSecond} bản ghi/giây`,
+              records: sensorData.length,
+              fileSize: formatFileSize(totalSize),
+              timeRemaining: formatTime((selectedKeys.length - sensorData.length) / recordsPerSecond)
+          });
+      }
+      
+      // Xử lý dữ liệu
+      updateDownloadStatus('Đang xử lý dữ liệu...', 90);
+      
+      const processedData = [];
+      for (const item of sensorData) {
+          try {
+              const timestamp = parseInt(item.key.replace('sensor_data_', ''));
+              const date = new Date(timestamp);
+              const value = JSON.parse(item.value.replace(/'/g, '"'));
+              
+              processedData.push({
+                  Timestamp: timestamp,
+                  Ngày: date.toLocaleDateString('vi-VN'),
+                  Thời_gian: date.toLocaleTimeString('vi-VN'),
+                  Nhiệt_độ: value.temperature,
+                  Độ_pH: value.ph,
+                  TDS: value.tds,
+                  Độ_đục: value.turbidity
+              });
+          } catch (e) {
+              console.error('Lỗi xử lý dữ liệu:', e);
+          }
+      }
+      
+      // Tạo file tải xuống
+      updateDownloadStatus('Đang tạo file tải xuống...', 95);
+      
+      let content, mimeType, ext;
+      if (format === 'excel') {
+          // Tạo Excel (sử dụng thư viện SheetJS)
+          const wb = XLSX.utils.book_new();
+          const ws = XLSX.utils.json_to_sheet(processedData);
+          XLSX.utils.book_append_sheet(wb, ws, "Dữ liệu cảm biến");
+          content = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+          mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          ext = 'xlsx';
+      } else if (format === 'csv') {
+          // Tạo CSV
+          const headers = Object.keys(processedData[0]).join(',');
+          const rows = processedData.map(obj => Object.values(obj).join(','));
+          content = [headers, ...rows].join('\n');
+          mimeType = 'text/csv';
+          ext = 'csv';
+      } else {
+          // Tạo PDF (giả lập)
+          content = "PDF Report Content"; // Thực tế cần sử dụng thư viện như jsPDF
+          mimeType = 'application/pdf';
+          ext = 'pdf';
+      }
+      
+      // Tạo blob và tải xuống
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const filename = `water_quality_data_${new Date().toISOString().slice(0, 10)}.${ext}`;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      // Hoàn thành
+      updateDownloadStatus('Tải xuống hoàn tất!', 100, {
+          fileSize: formatFileSize(content.length)
+      });
+      
+      // Hiển thị thông báo hoàn thành
+      progressBar.classList.remove('bg-gradient-progress');
+      progressBar.classList.add('bg-success');
+      downloadComplete.style.display = 'block';
+      
+      // Cập nhật nút mở file
+      document.getElementById('downloadOpenFile').onclick = () => {
+          window.open(url, '_blank');
+          return false;
+      };
+      
+  } catch (error) {
+      console.error('Lỗi tải xuống dữ liệu:', error);
+      updateDownloadStatus('Lỗi khi tải xuống dữ liệu', 100, {
+          error: error.message
+      });
+      progressBar.classList.remove('bg-gradient-progress');
+      progressBar.classList.add('bg-danger');
+  } finally {
+      // Khôi phục nút về trạng thái ban đầu
+      btn.innerHTML = originalContent;
+      btn.disabled = false;
+  }
+}
+
+// Hàm hỗ trợ cập nhật trạng thái tải xuống
+function updateDownloadStatus(text, progress, details = {}) {
+  const statusText = document.getElementById('downloadStatusText');
+  const percentageText = document.getElementById('downloadPercentage');
+  const progressBar = document.getElementById('downloadProgress');
+  const downloadRecordsCount = document.getElementById('downloadRecordsCount');
+  const downloadFileSize = document.getElementById('downloadFileSize');
+  const downloadSpeed = document.getElementById('downloadSpeed');
+  const downloadTimeRemaining = document.getElementById('downloadTimeRemaining');
+  
+  statusText.textContent = text;
+  percentageText.textContent = `${Math.round(progress)}%`;
+  progressBar.style.width = `${progress}%`;
+  
+  if (details.records) downloadRecordsCount.textContent = `${details.records} bản ghi`;
+  if (details.fileSize) downloadFileSize.textContent = details.fileSize;
+  if (details.speed) downloadSpeed.textContent = details.speed;
+  if (details.timeRemaining) downloadTimeRemaining.textContent = `~${details.timeRemaining} còn lại`;
+  
+  if (details.error) {
+      document.getElementById('downloadDetails').textContent = details.error;
+  }
+}
+
+// Hàm định dạng thời gian
+function formatTime(seconds) {
+  if (seconds < 60) return `${Math.round(seconds)} giây`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+  return `${minutes} phút ${remainingSeconds} giây`;
+}
+
+// Hàm định dạng kích thước file
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Thêm sự kiện click cho nút tải xuống
+document.getElementById('btnDownloadData').addEventListener('click', () => downloadData('excel'));
+document.getElementById('btnDownloadCSV').addEventListener('click', () => downloadData('csv'));
+document.getElementById('btnDownloadReport').addEventListener('click', () => downloadData('pdf'));
+
+// Cập nhật ngày mặc định
+document.addEventListener('DOMContentLoaded', function() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('endDate').value = today;
+  
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  document.getElementById('startDate').value = oneWeekAgo.toISOString().split('T')[0];
+});
 
     // Đánh giá trạng thái thông số
     function getStatusText(value, min, max, lowerIsBetter = false) {
@@ -1152,78 +1570,7 @@
             return "Bình thường";
         }
     }
-    // Sửa lại hàm xử lý download
-async function handleDownload() {
-  const btn = document.getElementById('btnDownloadData');
-  
-  try {
-    // Hiển thị trạng thái đang tải
-    btn.classList.add('loading');
-    
-    // Gọi API để lấy dữ liệu
-    const response = await fetch(`${worker_url}/get_all_sensor_data?t=${Date.now()}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
 
-    if (!response.ok) {
-      throw new Error(`Lỗi HTTP! Trạng thái: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success || !result.data || !Array.isArray(result.data)) {
-      throw new Error('Định dạng dữ liệu không hợp lệ');
-    }
-
-    // Tạo nội dung CSV
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" +
-      "Thời gian,Ngày,Giờ,Nhiệt độ (°C),Độ pH,TDS (PPM),Độ đục (NTU)\n" +
-      result.data.map(item => {
-        const date = new Date(item.timestamp);
-        return [
-          date.toISOString(),
-          date.toLocaleDateString('vi-VN'),
-          date.toLocaleTimeString('vi-VN'),
-          item.temperature || '0',
-          item.ph || '0',
-          item.tds || '0',
-          item.turbidity || '0'
-        ].join(',');
-      }).join('\n');
-
-    // Tạo và kích hoạt link download
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `water_quality_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-  } catch (error) {
-    console.error('Lỗi tải dữ liệu:', error);
-    alert('Tải xuống thất bại: ' + error.message);
-  } finally {
-    // Đảm bảo trạng thái loading được gỡ bỏ
-    btn.classList.remove('loading');
-  }
-}
-
-// Đăng ký sự kiện click cho nút tải xuống
-document.addEventListener('DOMContentLoaded', function() {
-  const downloadBtn = document.getElementById('btnDownloadData');
-  if (downloadBtn) {
-    // Xóa tất cả event listener cũ (nếu có)
-    const newBtn = downloadBtn.cloneNode(true);
-    downloadBtn.parentNode.replaceChild(newBtn, downloadBtn);
-    
-    // Thêm event listener mới
-    newBtn.addEventListener('click', handleDownload);
-  }
-});
     // Lấy class trạng thái
     function getStatusClass(value, min, max, lowerIsBetter = false) {
         if (lowerIsBetter) {
