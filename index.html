@@ -63,6 +63,67 @@
       overflow: hidden;
       z-index: 10;
     }
+      .btn-download {
+        position: relative;
+        overflow: hidden;
+        border: none;
+        border-radius: 12px;
+        padding: 0.6rem 1.2rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        background: linear-gradient(135deg, #4e54c8, #8f94fb);
+        color: white;
+        box-shadow: 0 4px 15px rgba(78, 84, 200, 0.3);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 140px;
+        height: 40px;
+      }
+      
+      .btn-download:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(78, 84, 200, 0.4);
+      }
+      
+      .btn-download:active {
+        transform: translateY(0);
+      }
+      
+      .btn-download .btn-content,
+      .btn-download .btn-loading {
+        transition: all 0.3s ease;
+      }
+      
+      .btn-download .btn-loading {
+        position: absolute;
+        opacity: 0;
+        visibility: hidden;
+      }
+      
+      .btn-download.loading .btn-content {
+        opacity: 0;
+        visibility: hidden;
+      }
+      
+      .btn-download.loading .btn-loading {
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      .btn-download.success {
+        background: linear-gradient(135deg, #00b09b, #96c93d);
+        box-shadow: 0 4px 15px rgba(0, 176, 155, 0.3);
+      }
+      
+      .btn-download.error {
+        background: linear-gradient(135deg, #ff416c, #ff4b2b);
+        box-shadow: 0 4px 15px rgba(255, 65, 108, 0.3);
+      }
+    
     
     .dashboard-header::before {
       content: "";
@@ -525,12 +586,16 @@
           </div>
 
           <!-- Phần thời gian thực (bên phải) -->
-          <!-- Trong phần header, sửa lại phần thời gian thực thành: -->
+          <!-- Trong phần header, thay thế nút tải xuống bằng đoạn code này -->
           <div class="col-md-3 text-end">
             <div class="d-flex justify-content-end align-items-center gap-2">
-              <button id="btnDownloadData" class="btn btn-sm btn-success"
-                style="font-size: 0.8rem;">
-                <i class="fas fa-download me-1"></i> Tải dữ liệu
+              <button id="btnDownloadData" class="btn-download">
+                <span class="btn-content">
+                  <i class="fas fa-download me-1"></i> TẢI DỮ LIỆU
+                </span>
+                <span class="btn-loading">
+                  <i class="fas fa-spinner fa-spin me-1"></i> ĐANG XỬ LÝ...
+                </span>
               </button>
               <span class="badge real-time-badge" style="font-size: 0.8rem;">
                 <i class="fas fa-circle me-1"></i> DỮ LIỆU THỜI GIAN THỰC
@@ -1108,90 +1173,98 @@
             return "Bình thường";
         }
     }
-    // Hàm tải xuống dữ liệu
-async function downloadData() {
-    try {
+    async function downloadData(event) {
+      event.preventDefault();
+      
+      const downloadBtn = document.getElementById("btnDownloadData");
+      downloadBtn.classList.add('loading');
+      
+      try {
         console.log("Bắt đầu quá trình tải xuống...");
         
-        const downloadBtn = document.getElementById("btnDownloadData");
-        const originalText = downloadBtn.innerHTML;
-        downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Đang tải...';
-        downloadBtn.disabled = true;
-
-        // Kiểm tra worker_url có tồn tại không
-        if (!window.worker_url) {
-            window.worker_url = "https://esp32-data-receiver.phucminh9395.workers.dev";
-            console.log("Sử dụng worker_url mặc định:", worker_url);
-        }
-
-        console.log("Đang gọi API để lấy dữ liệu...");
-        const response = await fetch(`${worker_url}/get_all_sensor_data`);
+        const response = await fetch(`${worker_url}/get_all_sensor_data`, {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
         
         if (!response.ok) {
-            throw new Error(`Lỗi HTTP: ${response.status}`);
+          throw new Error(`Lỗi HTTP: ${response.status}`);
         }
-
+    
         const result = await response.json();
         console.log("Dữ liệu nhận được từ API:", result);
-
+    
         if (result.success && result.data && result.data.length > 0) {
-            console.log(`Đang xử lý ${result.data.length} bản ghi...`);
-            
-            // Tạo dữ liệu CSV
-            const headers = ["Thời gian", "Ngày", "Giờ", "Nhiệt độ (°C)", "Độ pH", "TDS (PPM)", "Độ đục (NTU)"];
-            let csvContent = headers.join(",") + "\n";
-            
-            result.data.forEach(item => {
-                const date = new Date(item.timestamp);
-                const row = [
-                    date.toISOString(),
-                    date.toLocaleDateString('vi-VN'),
-                    date.toLocaleTimeString('vi-VN'),
-                    item.temperature || '0',
-                    item.ph || '0',
-                    item.tds || '0',
-                    item.turbidity || '0'
-                ];
-                csvContent += row.join(",") + "\n";
-            });
-
-            // Tạo file CSV
-            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            
-            // Tạo link tải xuống
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `sensor_data_${new Date().toISOString().slice(0, 10)}.csv`;
-            
-            // Thêm vào DOM và click tự động
-            document.body.appendChild(link);
-            link.click();
-            
-            // Dọn dẹp
-            setTimeout(() => {
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-            }, 100);
-
-            console.log("Tải xuống thành công!");
-            alert(`Đã tải xuống thành công ${result.data.length} bản ghi`);
+          console.log(`Đang xử lý ${result.data.length} bản ghi...`);
+          
+          // Tạo dữ liệu CSV
+          const headers = ["Thời gian", "Ngày", "Giờ", "Nhiệt độ (°C)", "Độ pH", "TDS (PPM)", "Độ đục (NTU)"];
+          let csvContent = headers.join(",") + "\n";
+          
+          result.data.forEach(item => {
+            const date = new Date(item.timestamp);
+            const row = [
+              date.toISOString(),
+              date.toLocaleDateString('vi-VN'),
+              date.toLocaleTimeString('vi-VN'),
+              item.temperature || '0',
+              item.ph || '0',
+              item.tds || '0',
+              item.turbidity || '0'
+            ];
+            csvContent += row.join(",") + "\n";
+          });
+    
+          // Tạo file CSV
+          const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          
+          // Tạo link tải xuống
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `water_quality_data_${new Date().toISOString().slice(0, 10)}.csv`;
+          link.style.display = 'none';
+          
+          // Thêm vào DOM và click tự động
+          document.body.appendChild(link);
+          link.click();
+          
+          // Dọn dẹp
+          setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+    
+          console.log("Tải xuống thành công!");
+          downloadBtn.classList.remove('loading');
+          downloadBtn.classList.add('success');
+          setTimeout(() => {
+            downloadBtn.classList.remove('success');
+          }, 2000);
         } else {
-            console.warn("Không có dữ liệu để tải xuống");
-            alert("Không tìm thấy dữ liệu để tải xuống");
+          console.warn("Không có dữ liệu để tải xuống");
+          downloadBtn.classList.remove('loading');
+          downloadBtn.classList.add('error');
+          setTimeout(() => {
+            downloadBtn.classList.remove('error');
+          }, 2000);
+          alert("Không tìm thấy dữ liệu để tải xuống");
         }
-    } catch (error) {
+      } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
+        downloadBtn.classList.remove('loading');
+        downloadBtn.classList.add('error');
+        setTimeout(() => {
+          downloadBtn.classList.remove('error');
+        }, 2000);
         alert(`Lỗi khi tải dữ liệu: ${error.message}`);
-    } finally {
-        const downloadBtn = document.getElementById("btnDownloadData");
-        downloadBtn.innerHTML = originalText;
-        downloadBtn.disabled = false;
+      }
     }
-}
-// Thêm sự kiện click cho nút tải xuống
-document.getElementById("btnDownloadData").addEventListener("click", downloadData);
-
+    
+    // Thêm sự kiện click cho nút tải xuống
+    document.getElementById("btnDownloadData").addEventListener("click", downloadData);
+    </script>
     // Lấy class trạng thái
     function getStatusClass(value, min, max, lowerIsBetter = false) {
         if (lowerIsBetter) {
