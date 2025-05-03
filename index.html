@@ -61,9 +61,28 @@
     .header-font {
       font-family: 'Montserrat', sans-serif;
     }
-    #overview-chart {
-      height: 300px !important; /* Tăng chiều cao cho biểu đồ */
-    }
+    
+    /* Thêm vào phần CSS */
+.chart-container {
+  position: relative;
+  height: 220px;
+  width: 100%;
+}
+
+.chart-time-display {
+  position: absolute;
+  bottom: 10px;
+  right: 15px;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.chart-title {
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #333;
+  font-size: 1.1rem;
+}
     .bar-chart-container {
       min-height: 320px;
       background-color: white;
@@ -231,12 +250,7 @@
       border: 1px solid rgba(255, 61, 87, 0.3);
     }
     
-    .chart-container {
-      position: relative;
-      height: 300px; /* Tăng chiều cao cho biểu đồ tổng quan */
-      width: 100%;
-      margin: 0 auto;
-    }
+    
     
     .control-btn {
       font-weight: 600;
@@ -753,124 +767,114 @@
                 <li class="nav-item" role="presentation">
                   <button class="nav-link active" id="overview-tab"
                     data-bs-toggle="tab"
-                    data-bs-target="#overview-chart" type="button" role="tab">
-                    Tổng quan
-                  </button>
+                    data-bs-target="#overview-chart" type="button"
+                    role="tab">Tổng quát</button>
                 </li>
                 <li class="nav-item" role="presentation">
                   <button class="nav-link" id="temp-tab" data-bs-toggle="tab"
-                    data-bs-target="#temp-chart" type="button" role="tab">
-                    Nhiệt độ
-                  </button>
+                    data-bs-target="#temp-chart" type="button" role="tab">Nhiệt
+                    độ</button>
                 </li>
                 <li class="nav-item" role="presentation">
                   <button class="nav-link" id="ph-tab" data-bs-toggle="tab"
-                    data-bs-target="#ph-chart" type="button" role="tab">
-                    pH
-                  </button>
+                    data-bs-target="#ph-chart" type="button"
+                    role="tab">pH</button>
                 </li>
                 <li class="nav-item" role="presentation">
                   <button class="nav-link" id="tds-tab" data-bs-toggle="tab"
-                    data-bs-target="#tds-chart" type="button" role="tab">
-                    TDS
-                  </button>
+                    data-bs-target="#tds-chart" type="button"
+                    role="tab">TDS</button>
                 </li>
                 <li class="nav-item" role="presentation">
                   <button class="nav-link" id="turbidity-tab"
                     data-bs-toggle="tab"
-                    data-bs-target="#turbidity-chart" type="button" role="tab">
-                    Độ đục
-                  </button>
+                    data-bs-target="#turbidity-chart" type="button"
+                    role="tab">Độ đục</button>
                 </li>
               </ul>
               <div class="tab-content" id="chartTabContent">
-                <!-- Biểu đồ tổng quan -->
                 <div class="tab-pane fade show active" id="overview-chart"
                   role="tabpanel">
-                  <div class="chart-container bar-chart-container">
+                  <div class="chart-container">
                     <canvas id="overviewChart"></canvas>
                   </div>
                 </div>
-                <div class="tab-content" id="chartTabContent">
-                  <div class="tab-pane fade show active" id="temp-chart"
-                    role="tabpanel">
-                    <div class="chart-container">
-                      <canvas id="tempChart"></canvas>
-                    </div>
+                <div class="tab-pane fade" id="temp-chart" role="tabpanel">
+                  <div class="chart-container">
+                    <canvas id="tempChart"></canvas>
                   </div>
-                  <div class="tab-pane fade" id="ph-chart" role="tabpanel">
-                    <div class="chart-container">
-                      <canvas id="phChart"></canvas>
-                    </div>
+                </div>
+                <div class="tab-pane fade" id="ph-chart" role="tabpanel">
+                  <div class="chart-container">
+                    <canvas id="phChart"></canvas>
                   </div>
-                  <div class="tab-pane fade" id="tds-chart" role="tabpanel">
-                    <div class="chart-container">
-                      <canvas id="tdsChart"></canvas>
-                    </div>
+                </div>
+                <div class="tab-pane fade" id="tds-chart" role="tabpanel">
+                  <div class="chart-container">
+                    <canvas id="tdsChart"></canvas>
                   </div>
-                  <div class="tab-pane fade" id="turbidity-chart"
-                    role="tabpanel">
-                    <div class="chart-container">
-                      <canvas id="turbidityChart"></canvas>
-                    </div>
+                </div>
+                <div class="tab-pane fade" id="turbidity-chart" role="tabpanel">
+                  <div class="chart-container">
+                    <canvas id="turbidityChart"></canvas>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            <!-- Sensor Status -->
-            <div class="card">
-              <div class="card-header warning">
-                <i class="fas fa-microchip me-2"></i> TRẠNG THÁI CẢM BIẾN
-              </div>
-              <div class="card-body">
-                <div class="row">
-                  <div class="col-6 mb-3">
-                    <div class="d-flex align-items-center">
-                      <div class="bg-danger bg-opacity-10 p-2 rounded me-2">
-                        <i class="fas fa-temperature-high text-danger"></i>
-                      </div>
-                      <div>
-                        <p class="mb-0 small text-muted">Nhiệt độ</p>
-                        <p id="tempSensorStatus"
-                          class="mb-0 fw-bold text-success">Hoạt động</p>
-                      </div>
+          <!-- Sensor Status -->
+          <div class="card">
+            <div class="card-header warning">
+              <i class="fas fa-microchip me-2"></i> TRẠNG THÁI CẢM BIẾN
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-6 mb-3">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-danger bg-opacity-10 p-2 rounded me-2">
+                      <i class="fas fa-temperature-high text-danger"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0 small text-muted">Nhiệt độ</p>
+                      <p id="tempSensorStatus"
+                        class="mb-0 fw-bold text-success">Hoạt động</p>
                     </div>
                   </div>
-                  <div class="col-6 mb-3">
-                    <div class="d-flex align-items-center">
-                      <div class="bg-primary bg-opacity-10 p-2 rounded me-2">
-                        <i class="fas fa-water text-primary"></i>
-                      </div>
-                      <div>
-                        <p class="mb-0 small text-muted">Độ pH</p>
-                        <p id="phSensorStatus"
-                          class="mb-0 fw-bold text-success">Hoạt động</p>
-                      </div>
+                </div>
+                <div class="col-6 mb-3">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 p-2 rounded me-2">
+                      <i class="fas fa-water text-primary"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0 small text-muted">Độ pH</p>
+                      <p id="phSensorStatus"
+                        class="mb-0 fw-bold text-success">Hoạt động</p>
                     </div>
                   </div>
-                  <div class="col-6">
-                    <div class="d-flex align-items-center">
-                      <div class="bg-warning bg-opacity-10 p-2 rounded me-2">
-                        <i class="fas fa-tint text-warning"></i>
-                      </div>
-                      <div>
-                        <p class="mb-0 small text-muted">TDS</p>
-                        <p id="tdsSensorStatus"
-                          class="mb-0 fw-bold text-success">Hoạt động</p>
-                      </div>
+                </div>
+                <div class="col-6">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-warning bg-opacity-10 p-2 rounded me-2">
+                      <i class="fas fa-tint text-warning"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0 small text-muted">TDS</p>
+                      <p id="tdsSensorStatus"
+                        class="mb-0 fw-bold text-success">Hoạt động</p>
                     </div>
                   </div>
-                  <div class="col-6">
-                    <div class="d-flex align-items-center">
-                      <div class="bg-success bg-opacity-10 p-2 rounded me-2">
-                        <i class="fas fa-cloud-meatball text-success"></i>
-                      </div>
-                      <div>
-                        <p class="mb-0 small text-muted">Độ đục</p>
-                        <p id="turbiditySensorStatus"
-                          class="mb-0 fw-bold text-success">Hoạt động</p>
-                      </div>
+                </div>
+                <div class="col-6">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-success bg-opacity-10 p-2 rounded me-2">
+                      <i class="fas fa-cloud-meatball text-success"></i>
+                    </div>
+                    <div>
+                      <p class="mb-0 small text-muted">Độ đục</p>
+                      <p id="turbiditySensorStatus"
+                        class="mb-0 fw-bold text-success">Hoạt động</p>
                     </div>
                   </div>
                 </div>
@@ -879,142 +883,143 @@
           </div>
         </div>
       </div>
-      <div class="card shadow mb-4">
-        <div
-          class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-          <h6 class="m-0 font-weight-bold text-primary">Tải xuống dữ liệu</h6>
+    </div>
+    <div class="card shadow mb-4">
+      <div
+        class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Tải xuống dữ liệu</h6>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-5">
+            <label for="startDate" class="form-label">Từ ngày</label>
+            <input type="date" class="form-control" id="startDate">
+          </div>
+          <div class="col-md-5">
+            <label for="endDate" class="form-label">Đến ngày</label>
+            <input type="date" class="form-control" id="endDate">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button id="btnDownloadData" class="btn btn-success me-2">
+              <i class="fas fa-file-excel me-2"></i>Xuất Excel
+            </button>
+          </div>
         </div>
-        <div class="card-body">
-          <div class="row mb-3">
-            <div class="col-md-5">
-              <label for="startDate" class="form-label">Từ ngày</label>
-              <input type="date" class="form-control" id="startDate">
-            </div>
-            <div class="col-md-5">
-              <label for="endDate" class="form-label">Đến ngày</label>
-              <input type="date" class="form-control" id="endDate">
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-              <button id="btnDownloadData" class="btn btn-success me-2">
-                <i class="fas fa-file-excel me-2"></i>Xuất Excel
-              </button>
+
+        <div class="row">
+          <div class="col-12">
+            <button id="btnDownloadCSV" class="btn btn-outline-primary">
+              <i class="fas fa-file-csv me-2"></i>Xuất CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Thanh tiến trình tải xuống -->
+        <div id="downloadProgressContainer" class="mt-3"
+          style="display: none;">
+          <div class="progress-info mb-2 d-flex justify-content-between">
+            <div id="downloadStatusText">Đang chuẩn bị...</div>
+            <div id="downloadPercentage">0%</div>
+          </div>
+          <div class="progress mb-3" style="height: 20px;">
+            <div id="downloadProgress"
+              class="progress-bar bg-gradient-progress"
+              role="progressbar" style="width: 0%" aria-valuenow="0"
+              aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div id="downloadDetails" class="small text-muted">
+            <div class="row">
+              <div class="col-md-3">
+                <i class="fas fa-table me-1"></i> <span
+                  id="downloadRecordsCount">0 bản ghi</span>
+              </div>
+              <div class="col-md-3">
+                <i class="fas fa-file me-1"></i> <span id="downloadFileSize">0
+                  MB</span>
+              </div>
+              <div class="col-md-3">
+                <i class="fas fa-tachometer-alt me-1"></i> <span
+                  id="downloadSpeed"></span>
+              </div>
+              <div class="col-md-3">
+                <i class="fas fa-clock me-1"></i> <span
+                  id="downloadTimeRemaining"></span>
+              </div>
             </div>
           </div>
 
-          <div class="row">
-            <div class="col-12">
-              <button id="btnDownloadCSV" class="btn btn-outline-primary">
-                <i class="fas fa-file-csv me-2"></i>Xuất CSV
-              </button>
-            </div>
-          </div>
-
-          <!-- Thanh tiến trình tải xuống -->
-          <div id="downloadProgressContainer" class="mt-3"
+          <!-- Thông báo hoàn thành -->
+          <div id="downloadComplete" class="alert alert-success mt-3"
             style="display: none;">
-            <div class="progress-info mb-2 d-flex justify-content-between">
-              <div id="downloadStatusText">Đang chuẩn bị...</div>
-              <div id="downloadPercentage">0%</div>
-            </div>
-            <div class="progress mb-3" style="height: 20px;">
-              <div id="downloadProgress"
-                class="progress-bar bg-gradient-progress"
-                role="progressbar" style="width: 0%" aria-valuenow="0"
-                aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
-            <div id="downloadDetails" class="small text-muted">
-              <div class="row">
-                <div class="col-md-3">
-                  <i class="fas fa-table me-1"></i> <span
-                    id="downloadRecordsCount">0 bản ghi</span>
-                </div>
-                <div class="col-md-3">
-                  <i class="fas fa-file me-1"></i> <span id="downloadFileSize">0
-                    MB</span>
-                </div>
-                <div class="col-md-3">
-                  <i class="fas fa-tachometer-alt me-1"></i> <span
-                    id="downloadSpeed"></span>
-                </div>
-                <div class="col-md-3">
-                  <i class="fas fa-clock me-1"></i> <span
-                    id="downloadTimeRemaining"></span>
-                </div>
-              </div>
-            </div>
+            <i class="fas fa-check-circle me-2"></i>
+            Tải xuống hoàn tất!
+            <a href="#" id="downloadOpenFile" class="alert-link ms-2">Mở
+              file</a>
+          </div>
 
-            <!-- Thông báo hoàn thành -->
-            <div id="downloadComplete" class="alert alert-success mt-3"
-              style="display: none;">
-              <i class="fas fa-check-circle me-2"></i>
-              Tải xuống hoàn tất!
-              <a href="#" id="downloadOpenFile" class="alert-link ms-2">Mở
-                file</a>
-            </div>
-
-            <!-- Thông báo lỗi -->
-            <div id="downloadError" class="alert alert-danger mt-3"
-              style="display: none;">
-              <i class="fas fa-exclamation-circle me-2"></i>
-              <span id="errorMessage">Đã xảy ra lỗi khi tải xuống dữ
-                liệu.</span>
-              <button id="retryDownload" class="btn btn-warning btn-sm ms-3">
-                <i class="fas fa-sync-alt me-1"></i>Thử lại
-              </button>
-            </div>
+          <!-- Thông báo lỗi -->
+          <div id="downloadError" class="alert alert-danger mt-3"
+            style="display: none;">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <span id="errorMessage">Đã xảy ra lỗi khi tải xuống dữ
+              liệu.</span>
+            <button id="retryDownload" class="btn btn-warning btn-sm ms-3">
+              <i class="fas fa-sync-alt me-1"></i>Thử lại
+            </button>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Footer -->
-      <footer class="footer">
-        <div class="container">
-          <div class="row">
-            <div class="col-md-4 mb-4 mb-md-0">
-              <h5 class="text-uppercase mb-3 text-warning header-font">ĐỀ TÀI
-                NGHIÊN CỨU</h5>
-              <p>Hệ thống giám sát chất lượng nước tự động</p>
-              <p class="mb-0">Ứng dụng IoT trong kiểm soát chất lượng nước nhà
-                máy</p>
-            </div>
-            <div class="col-md-4 mb-4 mb-md-0">
-              <h5 class="text-uppercase mb-3 text-warning header-font">NHÓM THỰC
-                HIỆN</h5>
-              <div class="row">
-                <div class="col-6">
-                  <p class="mb-1">Lê Minh Phúc</p>
-                  <p class="mb-1">Lê Thanh Vương</p>
-                </div>
-                <div class="col-6">
-                  <p class="mb-1">Trần Hoàng Nghĩa</p>
-                  <p class="mb-1">Nguyễn Huy Hậu</p>
-                </div>
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-4 mb-4 mb-md-0">
+            <h5 class="text-uppercase mb-3 text-warning header-font">ĐỀ TÀI
+              NGHIÊN CỨU</h5>
+            <p>Hệ thống giám sát chất lượng nước tự động</p>
+            <p class="mb-0">Ứng dụng IoT trong kiểm soát chất lượng nước nhà
+              máy</p>
+          </div>
+          <div class="col-md-4 mb-4 mb-md-0">
+            <h5 class="text-uppercase mb-3 text-warning header-font">NHÓM THỰC
+              HIỆN</h5>
+            <div class="row">
+              <div class="col-6">
+                <p class="mb-1">Lê Minh Phúc</p>
+                <p class="mb-1">Lê Thanh Vương</p>
+              </div>
+              <div class="col-6">
+                <p class="mb-1">Trần Hoàng Nghĩa</p>
+                <p class="mb-1">Nguyễn Huy Hậu</p>
               </div>
             </div>
-            <div class="col-md-4">
-              <h5 class="text-uppercase mb-3 text-warning header-font">GIẢNG
-                VIÊN
-                HƯỚNG DẪN</h5>
-              <p class="mb-1">K.S Mai Vạn Hậu</p>
-              <p class="mb-0">Trường Đại học Giao thông Vận tải Phân Hiệu Tại
-                TP.HCM</p>
-            </div>
           </div>
-          <hr class="my-4" style="border-color: rgba(255,255,255,0.1);">
-          <div class="text-center">
-            <p class="mb-0 small">© 2025 Bản quyền thuộc về Nhóm nghiên cứu -
-              UTC2</p>
+          <div class="col-md-4">
+            <h5 class="text-uppercase mb-3 text-warning header-font">GIẢNG
+              VIÊN
+              HƯỚNG DẪN</h5>
+            <p class="mb-1">K.S Mai Vạn Hậu</p>
+            <p class="mb-0">Trường Đại học Giao thông Vận tải Phân Hiệu Tại
+              TP.HCM</p>
           </div>
         </div>
-      </footer>
+        <hr class="my-4" style="border-color: rgba(255,255,255,0.1);">
+        <div class="text-center">
+          <p class="mb-0 small">© 2025 Bản quyền thuộc về Nhóm nghiên cứu -
+            UTC2</p>
+        </div>
+      </div>
+    </footer>
 
-      <!-- Bootstrap JS -->
-      <script
-        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-      <!-- AOS Animation -->
-      <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <!-- Bootstrap JS -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- AOS Animation -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 
-      <script>
+    <script>
     // Khởi tạo AOS animation
     AOS.init({
       duration: 800,
@@ -1187,11 +1192,18 @@
               }
               
               // Cập nhật biểu đồ
-              const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-              updateChart(tempChart, timeString, data.temperature);
-              updateChart(phChart, timeString, data.ph);
-              updateChart(tdsChart, timeString, data.tds);
-              updateChart(turbidityChart, timeString, data.turbidity);
+              // Trong hàm getData(), thay đổi phần cập nhật biểu đồ như sau:
+const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+updateChart(overviewChart, timeString, [
+  data.temperature,
+  data.ph,
+  data.tds,
+  data.turbidity
+]);
+updateChart(tempChart, timeString, data.temperature);
+updateChart(phChart, timeString, data.ph);
+updateChart(tdsChart, timeString, data.tds);
+updateChart(turbidityChart, timeString, data.turbidity);
           }
       } catch (error) {
           console.error("❌ Lỗi lấy dữ liệu từ Worker:", error);
@@ -1243,17 +1255,31 @@
     }
 
     // Cập nhật biểu đồ
-    function updateChart(chart, label, value) {
-        chart.data.labels.push(label);
-        chart.data.datasets[0].data.push(value);
-        
-        if (chart.data.labels.length > 10) {
-            chart.data.labels.shift();
-            chart.data.datasets[0].data.shift();
-        }
-        
-        chart.update();
-    }
+   // Cập nhật hàm updateChart để hỗ trợ biểu đồ tổng quan
+function updateChart(chart, label, values) {
+  chart.data.labels.push(label);
+  
+  // Nếu là biểu đồ tổng quan (có nhiều datasets)
+  if (Array.isArray(values)) {
+    values.forEach((value, index) => {
+      chart.data.datasets[index].data.push(value);
+    });
+  } 
+  // Nếu là biểu đồ đơn lẻ
+  else {
+    chart.data.datasets[0].data.push(values);
+  }
+  
+  // Giới hạn số lượng điểm dữ liệu hiển thị
+  if (chart.data.labels.length > 10) {
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(dataset => {
+      dataset.data.shift();
+    });
+  }
+  
+  chart.update();
+}
 
     // Cập nhật phần tử giao diện
     function updateElement(id, value) {
@@ -1277,120 +1303,127 @@
 
 // Thay thế hàm này trong phần khởi tạo biểu đồ
 // === THAY THẾ HÀM NÀY ===
+// Thay thế hàm này trong phần khởi tạo biểu đồ
 function createOverviewChart(canvasId) {
   const ctx = document.getElementById(canvasId).getContext("2d");
   return new Chart(ctx, {
-    type: "bar",
+    type: "line",
     data: {
-      labels: ["Nhiệt độ", "Độ pH", "TDS", "Độ đục"],
-      datasets: [{
-        label: "Giá trị hiện tại",
-        data: [0, 0, 0, 0],
-        backgroundColor: [
-          'rgba(220, 53, 69, 0.7)', // Màu đỏ cho nhiệt độ
-          'rgba(13, 110, 253, 0.7)', // Màu xanh dương cho pH
-          'rgba(255, 193, 7, 0.7)',  // Màu vàng cho TDS
-          'rgba(25, 135, 84, 0.7)'   // Màu xanh lá cho độ đục
-        ],
-        borderColor: [
-          'rgba(220, 53, 69, 1)',
-          'rgba(13, 110, 253, 1)',
-          'rgba(255, 193, 7, 1)',
-          'rgba(25, 135, 84, 1)'
-        ],
-        borderWidth: 1,
-        borderRadius: 4, // Bo tròn góc các cột
-        borderSkipped: false // Áp dụng border radius cho tất cả các cạnh
-      }]
+      labels: [],
+      datasets: [
+        {
+          label: "Nhiệt độ (°C)",
+          data: [],
+          borderColor: "rgba(220, 53, 69)",
+          backgroundColor: "rgba(220, 53, 69, 0.1)",
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 0
+        },
+        {
+          label: "Độ pH",
+          data: [],
+          borderColor: "rgba(13, 110, 253)",
+          backgroundColor: "rgba(13, 110, 253, 0.1)",
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 0
+        },
+        {
+          label: "TDS (ppm)",
+          data: [],
+          borderColor: "rgba(255, 193, 7)",
+          backgroundColor: "rgba(255, 193, 7, 0.1)",
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 0
+        },
+        {
+          label: "Độ đục (NTU)",
+          data: [],
+          borderColor: "rgba(25, 135, 84)",
+          backgroundColor: "rgba(25, 135, 84, 0.1)",
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 0
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: false
+          position: 'bottom',
+          labels: {
+            boxWidth: 12,
+            padding: 20,
+            usePointStyle: true
+          }
         },
         tooltip: {
-          callbacks: {
-            label: function(context) {
-              const units = ["°C", "", "ppm", "NTU"];
-              return `${context.label}: ${context.parsed.y} ${units[context.dataIndex]}`;
-            },
-            afterLabel: function(context) {
-              // Hiển thị ngưỡng an toàn
-              const thresholds = [
-                "20-35°C",
-                "6.5-8.5",
-                "100-500ppm",
-                "0-50NTU"
-              ];
-              return `Ngưỡng an toàn: ${thresholds[context.dataIndex]}`;
-            }
-          },
-          displayColors: false,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          titleFont: {
-            size: 14,
-            weight: 'bold'
-          },
-          bodyFont: {
-            size: 12
-          }
+          mode: 'index',
+          intersect: false
         }
       },
       scales: {
+        x: {
+          grid: {
+            display: false
+          }
+        },
         y: {
           beginAtZero: false,
           grid: {
             color: "rgba(0, 0, 0, 0.05)"
-          },
-          title: {
-            display: true,
-            text: 'Giá trị đo',
-            font: {
-              weight: 'bold'
-            }
-          }
-        },
-        x: {
-          grid: {
-            display: false
-          },
-          title: {
-            display: true,
-            text: 'Thông số chất lượng nước',
-            font: {
-              weight: 'bold'
-            }
           }
         }
       },
-      animation: {
-        duration: 1000,
-        easing: 'easeOutQuart'
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
       }
     }
   });
 }
 // === THÊM HÀM MỚI NÀY ===
 function updateBarChart(chart, values) {
-  // Làm mượt animation khi cập nhật dữ liệu
+  // Chuẩn hóa giá trị về khoảng -1 đến 1
+  const normalizedValues = {
+    temperature: normalizeValue(values.temperature, 0, 50), // Giả sử nhiệt độ 0-50°C
+    ph: normalizeValue(values.ph, 0, 14), // pH 0-14
+    tds: normalizeValue(values.tds, 0, 1000), // TDS 0-1000ppm
+    turbidity: normalizeValue(values.turbidity, 0, 100) // Độ đục 0-100NTU
+  };
+
   chart.data.datasets[0].data = [
-    values.temperature || 0,
-    values.ph || 0,
-    values.tds || 0,
-    values.turbidity || 0
+    normalizedValues.temperature,
+    normalizedValues.ph,
+    normalizedValues.tds,
+    normalizedValues.turbidity
   ];
   
-  // Thay đổi màu sắc dựa trên ngưỡng an toàn
-  chart.data.datasets[0].backgroundColor = [
-    getBarColor(values.temperature, 20, 35),
-    getBarColor(values.ph, 6.5, 8.5),
-    getBarColor(values.tds, 100, 500, true),
-    getBarColor(values.turbidity, 0, 50, true)
-  ];
+  // Cập nhật thời gian
+  const now = new Date();
+  const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  
+  // Cập nhật thời gian lên biểu đồ (nếu có phần tử hiển thị)
+  const timeElement = document.getElementById('chart-time-display');
+  if (timeElement) {
+    timeElement.textContent = timeString;
+  }
   
   chart.update();
+}
+
+function normalizeValue(value, min, max) {
+  // Chuyển đổi giá trị về khoảng -1 đến 1
+  return ((value - min) / (max - min)) * 2 - 1;
 }
 
 // Hàm hỗ trợ xác định màu sắc thanh bar
@@ -1405,22 +1438,39 @@ function getBarColor(value, min, max, lowerIsBetter = false) {
     return 'rgba(25, 135, 84, 0.7)'; // Xanh lá nếu an toàn
   }
 }
+function formatDateForAPI(dateStr) {
+  const date = new Date(dateStr);
+  return date.toISOString().split('T')[0];
+}
+
 // Hàm tải dữ liệu lịch sử
 async function fetchHistoricalData(startDate, endDate) {
-    try {
-        const url = `${worker_url}/get_historical_data?startDate=${startDate}&endDate=${endDate}`;
-        const response = await fetch(url);
-        const result = await response.json();
-        
-        if (result.success) {
-            return result.data;
-        } else {
-            throw new Error(result.error || "Không thể lấy dữ liệu lịch sử");
-        }
-    } catch (error) {
-        console.error("Lỗi khi lấy dữ liệu lịch sử:", error);
-        throw error;
-    }
+  try {
+    const formattedStart = formatDateForAPI(startDate);
+    let formattedEnd = formatDateForAPI(endDate);
+    
+    // Thêm 1 ngày nếu cần
+    const endDateObj = new Date(formattedEnd);
+    endDateObj.setDate(endDateObj.getDate() + 1);
+    formattedEnd = endDateObj.toISOString().split('T')[0];
+    
+    const url = `${worker_url}/get_historical_data?startDate=${formattedStart}&endDate=${formattedEnd}`;
+      const response = await fetch(url);
+      const result = await response.json();
+      
+      if (result.success) {
+          if (result.data && result.data.length > 0) {
+              return result.data;
+          } else {
+              throw new Error("Không có dữ liệu trong khoảng thời gian này");
+          }
+      } else {
+          throw new Error(result.error || "Không thể lấy dữ liệu lịch sử");
+      }
+  } catch (error) {
+      console.error("Lỗi khi lấy dữ liệu lịch sử:", error);
+      throw error;
+  }
 }
 
 // Hàm chuyển đổi dữ liệu sang CSV
@@ -1486,12 +1536,20 @@ document.getElementById("btnDownloadCSV").addEventListener("click", async functi
         alert("Vui lòng chọn khoảng thời gian");
         return;
     }
+    if (new Date(startDate) > new Date(endDate)) {
+      alert("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc");
+      return;
+  }
     
     try {
         showDownloadProgress(true);
         updateDownloadStatus("Đang tải dữ liệu...", 0);
         
         const data = await fetchHistoricalData(startDate, endDate);
+        if (data.length === 0) {
+          showDownloadError("Không có dữ liệu trong khoảng thời gian này");
+          return;
+      }
         updateDownloadStatus("Đang chuyển đổi dữ liệu...", 50);
         
         const csvData = convertToCSV(data);
@@ -1526,6 +1584,10 @@ document.getElementById("btnDownloadData").addEventListener("click", async funct
     if (!startDate || !endDate) {
         alert("Vui lòng chọn khoảng thời gian");
         return;
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      alert("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc");
+      return;
     }
     
     try {
@@ -1572,7 +1634,22 @@ function showDownloadComplete(show) {
         document.getElementById("downloadError").style.display = "none";
     }
 }
-
+function validateDates() {
+    const startDate = document.getElementById("startDate").value;
+    const endDate = document.getElementById("endDate").value;
+    
+    if (!startDate || !endDate) {
+        alert("Vui lòng chọn khoảng thời gian");
+        return false;
+    }
+    
+    if (new Date(startDate) > new Date(endDate)) {
+        alert("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc");
+        return false;
+    }
+    
+    return true;
+}
 function showDownloadError(message) {
     document.getElementById("errorMessage").textContent = message;
     document.getElementById("downloadError").style.display = "block";
@@ -1591,6 +1668,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("startDate").value = today;
     document.getElementById("endDate").value = today;
 });
+
   </script>
-    </body>
-  </html>
+  </body>
+</html>
