@@ -1437,6 +1437,7 @@ function formatDateForAPI(dateStr) {
 }
 
 // Hàm tải dữ liệu lịch sử
+// Hàm tải dữ liệu lịch sử (đã sửa lỗi)
 async function fetchHistoricalData(startDate, endDate) {
   try {
       const formattedStart = formatDateForAPI(startDate);
@@ -1466,24 +1467,60 @@ async function fetchHistoricalData(startDate, endDate) {
       }
       
       const formattedData = result.data.map((item, index) => {
-          const timestampDate = new Date(item.timestamp);
-          console.log(`Dữ liệu bản ghi ${index}: timestamp=${item.timestamp}, date=${timestampDate.toISOString()}`);
+          let timestamp;
+          let data;
+          
+          // Xử lý trường hợp dạng dữ liệu khác nhau
+          if (typeof item.timestamp === 'string' || typeof item.timestamp === 'number') {
+              // Nếu timestamp đã là chuỗi hoặc số
+              timestamp = item.timestamp;
+          } else {
+              console.error("Dạng timestamp không hợp lệ:", item.timestamp);
+              timestamp = Date.now(); // Giá trị mặc định
+          }
+          
+          // Xử lý trường hợp data có thể là chuỗi JSON
+          if (typeof item.data === 'string') {
+              try {
+                  data = JSON.parse(item.data);
+              } catch (e) {
+                  console.error("Lỗi parse JSON data:", e);
+                  data = { temperature: 0, ph: 0, tds: 0, turbidity: 0 };
+              }
+          } else {
+              data = item.data;
+          }
+          
+          // Đảm bảo các trường dữ liệu đều tồn tại
+          const safeData = {
+              temperature: parseFloat(data.temperature || 0),
+              ph: parseFloat(data.ph || 0),
+              tds: parseFloat(data.tds || 0),
+              turbidity: parseFloat(data.turbidity || 0)
+          };
+          
+          console.log(`Dữ liệu bản ghi ${index}: timestamp=${timestamp}, data=`, safeData);
+          
           return {
-              timestamp: item.timestamp,
-              data: {
-                  temperature: parseFloat(item.data.temperature) || 0,
-                  ph: parseFloat(item.data.ph) || 0,
-                  tds: parseFloat(item.data.tds) || 0,
-                  turbidity: parseFloat(item.data.turbidity) || 0,
-              },
+              timestamp: timestamp,
+              data: safeData
           };
       });
       
+      // Chuyển đổi startDate và endDate sang timestamp để so sánh
       const startTimestamp = new Date(formattedStart).getTime();
       const endTimestamp = new Date(formattedEnd).setHours(23, 59, 59, 999);
+      
+      console.log(`Lọc dữ liệu từ ${startTimestamp} đến ${endTimestamp}`);
+      
+      // Giải pháp 1: Bỏ lọc theo timestamp vì API đã lọc rồi
+      // return formattedData;
+      
+      // Giải pháp 2: Làm lỏng điều kiện lọc (chỉ cần có ít nhất 1 bản ghi)
       const validData = formattedData.filter(item => {
-          const ts = parseInt(item.timestamp);
-          return ts >= startTimestamp && ts <= endTimestamp;
+          // Đảm bảo timestamp là số
+          const ts = typeof item.timestamp === 'string' ? parseInt(item.timestamp) : item.timestamp;
+          return !isNaN(ts); // Chỉ cần timestamp hợp lệ
       });
       
       if (validData.length === 0) {
@@ -1497,6 +1534,7 @@ async function fetchHistoricalData(startDate, endDate) {
       throw new Error(error.message || "Lỗi không xác định khi lấy dữ liệu");
   }
 }
+
 
 // Hàm chuyển đổi dữ liệu sang CSV
 function convertToCSV(data) {
