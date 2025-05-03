@@ -1359,13 +1359,19 @@ async function downloadData(format = 'excel') {
     const formattedStartDate = formatDateParam(startDate);
     const formattedEndDate = formatDateParam(endDate);
     
-    // FIX 2: Kiểm tra URL endpoint - sửa đường dẫn API nếu cần
-    // Có thể API path cần điều chỉnh, ví dụ thêm "/rest" hoặc đổi "get_all_sensor_data" thành endpoint chính xác
-    const apiUrl = `${UPSTASH_REDIS_URL}/rest/get_all_sensor_data`;
-    
-    // FIX 3: Sử dụng phương thức POST thay vì GET (Upstash thường dùng POST)
-    // FIX 4: Đặt tham số trong body thay vì query params
+    // FIX 2: Sử dụng đúng định dạng URL cho Upstash Redis API
+    // Upstash Redis API sử dụng pipeline để gửi lệnh - đọc từ document: https://upstash.com/docs/redis/features/restapi
     const startTime = performance.now();
+    
+    // Tạo command để lấy dữ liệu dựa trên ngày
+    // Sử dụng lệnh HGETALL hoặc KEYS để lấy dữ liệu từ Redis theo thời gian
+    // Giả sử dữ liệu lưu dưới dạng hash với key có chứa ngày (YYYY-MM-DD)
+    const command = ["KEYS", `sensor:data:*`];  // Lệnh ví dụ để lấy tất cả key bắt đầu bằng "sensor:data:"
+    
+    const apiUrl = `${UPSTASH_REDIS_URL}`;
+    
+    console.log("Đang gửi request đến Upstash Redis...");
+    console.log("Command:", command);
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -1373,10 +1379,7 @@ async function downloadData(format = 'excel') {
         'Authorization': `Bearer ${UPSTASH_REDIS_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        startDate: formattedStartDate,
-        endDate: formattedEndDate
-      })
+      body: JSON.stringify(command)
     });
     
     // Kiểm tra lỗi chi tiết
@@ -1392,34 +1395,116 @@ async function downloadData(format = 'excel') {
       throw new Error(data.error || "Không thể lấy dữ liệu từ server");
     }
     
-    // FIX 5: Kiểm tra cấu trúc phản hồi
-    // Điều chỉnh để phù hợp với cấu trúc phản hồi thực tế từ API
-    const sensorData = data.data || data.result || data;
+    // FIX 5: Xử lý phản hồi từ Upstash Redis API
+    console.log("Phản hồi từ server:", data);
     
-    if (!sensorData || (Array.isArray(sensorData) && sensorData.length === 0)) {
+    // Kiểm tra xem data có phải là mảng các key không
+    if (!data || !Array.isArray(data) || data.length === 0) {
       throw new Error("Không tìm thấy dữ liệu trong khoảng thời gian đã chọn");
     }
     
-    // Chuyển đổi thành mảng nếu cần
-    const dataArray = Array.isArray(sensorData) ? sensorData : [sensorData];
-    
-    updateDownloadStatus(`Đã nhận ${dataArray.length} bản ghi...`, 50, {
-      records: dataArray.length
+    // Sau khi có danh sách các keys, lấy dữ liệu cho từng key
+    const allDataPromises = [];
+    const relevantKeys = data.filter(key => {
+      // Lọc key theo khoảng thời gian nếu key chứa thông tin về ngày
+      if (typeof key !== 'string') return false;
+      
+      // Giả sử key có format là sensor:data:YYYY-MM-DD
+      const keyParts = key.split(':');
+      if (keyParts.length < 3) return false;
+      
+      const keyDate = keyParts[2];
+      return keyDate >= formattedStartDate && keyDate <= formattedEndDate;
     });
+    
+    if (relevantKeys.length === 0) {
+      throw new Error("Không tìm thấy dữ liệu trong khoảng thời gian đã chọn");
+    }
+    
+    updateDownloadStatus(`Đã tìm thấy ${relevantKeys.length} key dữ liệu, đang tải...`, 30);
+    console.log("Các key phù hợp:", relevantKeys);
+    
+    // Tạo mảng lưu dữ liệu
+    let sensorDataArray = [];
+    
+    // Với mỗi key, gửi lệnh HGETALL để lấy dữ liệu
+    for (let i = 0; i < relevantKeys.length; i++) {
+      const key = relevantKeys[i];
+      updateDownloadStatus(`Đang tải dữ liệu ${i+1}/${relevantKeys.length}...`, 30 + (i/relevantKeys.length * 20));
+      
+      try {
+        const dataResponse = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${UPSTASH_REDIS_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(["HGETALL", key])
+        });
+        
+        if (!dataResponse.ok) {
+          console.error(`Lỗi khi lấy dữ liệu cho key ${key}: ${dataResponse.status}`);
+          continue;
+        }
+        
+        const keyData = await dataResponse.json();
+        console.log(`Dữ liệu cho key ${key}:`, keyData);
+        
+        // Chuyển đổi dữ liệu từ định dạng [key1, value1, key2, value2] sang object
+        // hoặc xử lý theo định dạng thực tế của dữ liệu trả về
+        if (Array.isArray(keyData) && keyData.length > 0) {
+          const dataObject = {};
+          for (let j = 0; j < keyData.length; j += 2) {
+            if (j + 1 < keyData.length) {
+              dataObject[keyData[j]] = keyData[j + 1];
+            }
+          }
+          
+          // Thêm timestamp từ key nếu có
+          const keyParts = key.split(':');
+          if (keyParts.length >= 3) {
+            dataObject.date = keyParts[2];
+          }
+          
+          sensorDataArray.push(dataObject);
+        }
+      } catch (error) {
+        console.error(`Lỗi khi xử lý key ${key}:`, error);
+      }
+    }
+    
+    if (sensorDataArray.length === 0) {
+      throw new Error("Không thể lấy dữ liệu chi tiết cho các key đã tìm thấy");
+    }
+    
+    updateDownloadStatus(`Đã nhận ${sensorDataArray.length} bản ghi...`, 50, {
+      records: sensorDataArray.length
+    });
+    
+    // Sắp xếp dữ liệu theo thời gian nếu có trường timestamp
+    sensorDataArray.sort((a, b) => {
+      const timeA = a.timestamp || a.date || '';
+      const timeB = b.timestamp || b.date || '';
+      return timeA.localeCompare(timeB);
+    });
+    
+    // Chuyển đổi thành mảng nếu cần
+    const dataArray = sensorDataArray;
     
     // Xử lý dữ liệu
     updateDownloadStatus('Đang xử lý dữ liệu...', 70);
     
     const processedData = dataArray.map(item => {
-      // FIX 6: Thêm kiểm tra để xử lý các trường hợp dữ liệu thiếu
+      // FIX 6: Thêm kiểm tra để xử lý các trường hợp dữ liệu thiếu và cấu trúc dữ liệu từ Redis
+      // Redis thường trả về tất cả giá trị dưới dạng string
       return {
-        Timestamp: item.timestamp || '',
-        Ngày: item.date || formatDateDisplay(item.timestamp),
-        Thời_gian: item.time || formatTimeDisplay(item.timestamp),
-        Nhiệt_độ: item.temperature || '',
-        Độ_pH: item.ph || '',
+        Timestamp: item.timestamp || item.date || '',
+        Ngày: item.date || formatDateDisplay(item.timestamp || ''),
+        Thời_gian: item.time || formatTimeDisplay(item.timestamp || ''),
+        Nhiệt_độ: item.temperature || item.temp || '',
+        Độ_pH: item.ph || item.pH || '',
         TDS: item.tds || '',
-        Độ_đục: item.turbidity || ''
+        Độ_đục: item.turbidity || item.turb || ''
       };
     });
     
@@ -1508,14 +1593,22 @@ function formatDateParam(dateStr) {
 // FIX 8: Thêm các hàm trích xuất ngày và giờ từ timestamp
 function formatDateDisplay(timestamp) {
   if (!timestamp) return '';
-  const date = new Date(timestamp);
-  return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  try {
+    const date = new Date(timestamp);
+    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  } catch (e) {
+    return timestamp;
+  }
 }
 
 function formatTimeDisplay(timestamp) {
   if (!timestamp) return '';
-  const date = new Date(timestamp);
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+  try {
+    const date = new Date(timestamp);
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+  } catch (e) {
+    return '';
+  }
 }
 
 // Hàm hiển thị lỗi
