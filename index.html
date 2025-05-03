@@ -1385,37 +1385,36 @@ function createOverviewChart(canvasId) {
 }
 // === THÊM HÀM MỚI NÀY ===
 function updateBarChart(chart, values) {
-  // Chuẩn hóa giá trị về khoảng -1 đến 1
+  const validValues = {
+      temperature: values.temperature !== null && !isNaN(values.temperature) ? parseFloat(values.temperature) : 0,
+      ph: values.ph !== null && !isNaN(values.ph) ? parseFloat(values.ph) : 0,
+      tds: values.tds !== null && !isNaN(values.tds) ? parseFloat(values.tds) : 0,
+      turbidity: values.turbidity !== null && !isNaN(values.turbidity) ? parseFloat(values.turbidity) : 0
+  };
+
   const normalizedValues = {
-    temperature: normalizeValue(values.temperature, 0, 50), // Giả sử nhiệt độ 0-50°C
-    ph: normalizeValue(values.ph, 0, 14), // pH 0-14
-    tds: normalizeValue(values.tds, 0, 1000), // TDS 0-1000ppm
-    turbidity: normalizeValue(values.turbidity, 0, 100) // Độ đục 0-100NTU
+      temperature: normalizeValue(validValues.temperature, 0, 50),
+      ph: normalizeValue(validValues.ph, 0, 14),
+      tds: normalizeValue(validValues.tds, 0, 1000),
+      turbidity: normalizeValue(validValues.turbidity, 0, 100)
   };
 
   chart.data.datasets[0].data = [
-    normalizedValues.temperature,
-    normalizedValues.ph,
-    normalizedValues.tds,
-    normalizedValues.turbidity
+      normalizedValues.temperature,
+      normalizedValues.ph,
+      normalizedValues.tds,
+      normalizedValues.turbidity
   ];
-  
-  // Cập nhật thời gian
+
   const now = new Date();
   const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  
-  // Cập nhật thời gian lên biểu đồ (nếu có phần tử hiển thị)
-  const timeElement = document.getElementById('chart-time-display');
-  if (timeElement) {
-    timeElement.textContent = timeString;
-  }
-  
   chart.update();
 }
-
 function normalizeValue(value, min, max) {
-  // Chuyển đổi giá trị về khoảng -1 đến 1
-  return ((value - min) / (max - min)) * 2 - 1;
+  // Trả về 0 nếu giá trị không hợp lệ hoặc bằng 0
+  if (value === null || isNaN(value) || value === 0) return 0;
+  // Chuẩn hóa về khoảng 0 đến 1 (thay vì -1 đến 1)
+  return Math.min(1, Math.max(0, (value - min) / (max - min)));
 }
 
 // Hàm hỗ trợ xác định màu sắc thanh bar
@@ -1430,6 +1429,7 @@ function getBarColor(value, min, max, lowerIsBetter = false) {
     return 'rgba(25, 135, 84, 0.7)'; // Xanh lá nếu an toàn
   }
 }
+// Hàm định dạng ngày cho API
 function formatDateForAPI(dateStr) {
   const date = new Date(dateStr);
   if (isNaN(date)) throw new Error("Định dạng ngày không hợp lệ");
@@ -1442,6 +1442,8 @@ async function fetchHistoricalData(startDate, endDate) {
       const formattedStart = formatDateForAPI(startDate);
       const formattedEnd = formatDateForAPI(endDate);
       
+      console.log(`📡 Gửi yêu cầu API: ${worker_url}/get_historical_data?startDate=${formattedStart}&endDate=${formattedEnd}`);
+      
       const url = `${worker_url}/get_historical_data?startDate=${formattedStart}&endDate=${formattedEnd}`;
       const response = await fetch(url, {
           method: "GET",
@@ -1453,6 +1455,7 @@ async function fetchHistoricalData(startDate, endDate) {
       }
       
       const result = await response.json();
+      console.log("📥 Phản hồi API:", result);
       
       if (!result.success) {
           throw new Error(result.error || "API trả về lỗi không xác định");
@@ -1462,20 +1465,35 @@ async function fetchHistoricalData(startDate, endDate) {
           throw new Error("Không có dữ liệu trong khoảng thời gian này");
       }
       
-      // Định dạng dữ liệu, đảm bảo giá trị là số
-      const formattedData = result.data.map(item => ({
-          timestamp: item.timestamp,
-          data: {
-              temperature: parseFloat(item.data.temperature) || 0,
-              ph: parseFloat(item.data.ph) || 0,
-              tds: parseFloat(item.data.tds) || 0,
-              turbidity: parseFloat(item.data.turbidity) || 0,
-          },
-      }));
+      const formattedData = result.data.map((item, index) => {
+          const timestampDate = new Date(item.timestamp);
+          console.log(`Dữ liệu bản ghi ${index}: timestamp=${item.timestamp}, date=${timestampDate.toISOString()}`);
+          return {
+              timestamp: item.timestamp,
+              data: {
+                  temperature: parseFloat(item.data.temperature) || 0,
+                  ph: parseFloat(item.data.ph) || 0,
+                  tds: parseFloat(item.data.tds) || 0,
+                  turbidity: parseFloat(item.data.turbidity) || 0,
+              },
+          };
+      });
       
-      return formattedData;
+      const startTimestamp = new Date(formattedStart).getTime();
+      const endTimestamp = new Date(formattedEnd).setHours(23, 59, 59, 999);
+      const validData = formattedData.filter(item => {
+          const ts = parseInt(item.timestamp);
+          return ts >= startTimestamp && ts <= endTimestamp;
+      });
+      
+      if (validData.length === 0) {
+          throw new Error("Dữ liệu trả về không khớp với khoảng thời gian yêu cầu");
+      }
+      
+      console.log(`✅ Tìm thấy ${validData.length} bản ghi hợp lệ`);
+      return validData;
   } catch (error) {
-      console.error("Lỗi khi lấy dữ liệu lịch sử:", error);
+      console.error("❌ Lỗi khi lấy dữ liệu lịch sử:", error);
       throw new Error(error.message || "Lỗi không xác định khi lấy dữ liệu");
   }
 }
