@@ -600,10 +600,9 @@
                     thống</small></h6>
                 <div class="d-flex justify-content-between mb-2">
                   <span>Kết nối thiết bị:</span>
-                  <span id="connectionStatus"
-                    class="connection-status connected">
+                  <span id="connectionStatus" class="connection-status">
                     <span class="status-dot"></span>
-                    <span>Đang kết nối</span>
+                    <span id="connectionStatusText">Đang kiểm tra...</span>
                   </span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
@@ -1108,6 +1107,7 @@
     // Lấy dữ liệu từ Worker
     async function getData() {
       try {
+          await checkConnectionStatus();
           const response = await fetch(`${worker_url}/get_latest_sensor_data`);
           const result = await response.json();
           
@@ -1697,6 +1697,32 @@ document.addEventListener('DOMContentLoaded', function() {
             getData();
         }
     }, 2000);
+    async function checkConnectionStatus() {
+      try {
+        const response = await fetch(`${worker_url}/heartbeat`);
+        const data = await response.json();
+        
+        const now = Date.now();
+        const lastHeartbeat = data.timestamp;
+        const secondsSinceLastHeartbeat = (now - lastHeartbeat) / 1000;
+        
+        const connectionElement = document.getElementById('connectionStatus');
+        const statusTextElement = document.getElementById('connectionStatusText');
+        
+        if (secondsSinceLastHeartbeat < 30) {
+          connectionElement.className = 'connection-status connected';
+          statusTextElement.textContent = 'Đang kết nối';
+        } else {
+          connectionElement.className = 'connection-status disconnected';
+          statusTextElement.textContent = 'Mất kết nối';
+        }
+      } catch (error) {
+        console.error('Lỗi kiểm tra kết nối:', error);
+        document.getElementById('connectionStatus').className = 'connection-status disconnected';
+        document.getElementById('connectionStatusText').textContent = 'Mất kết nối';
+      }
+    }
+    setInterval(checkConnectionStatus, 10000);
 
     // Khởi tạo
     document.addEventListener("DOMContentLoaded", function() {
