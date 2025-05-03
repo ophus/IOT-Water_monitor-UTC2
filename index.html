@@ -1286,14 +1286,6 @@ function updateChart(chart, label, values) {
         const el = document.getElementById(id);
         if (el) el.innerText = value;
     }
-
-    // Kiểm tra liên tục nếu đang trong chế độ đo
-    setInterval(() => {
-        if (isMeasuring) {
-            getData();
-        }
-    }, 2000);
-
     // Khởi tạo
     document.addEventListener("DOMContentLoaded", function() {
         getData();
@@ -1440,234 +1432,249 @@ function getBarColor(value, min, max, lowerIsBetter = false) {
 }
 function formatDateForAPI(dateStr) {
   const date = new Date(dateStr);
+  if (isNaN(date)) throw new Error("Định dạng ngày không hợp lệ");
   return date.toISOString().split('T')[0];
 }
 
 // Hàm tải dữ liệu lịch sử
 async function fetchHistoricalData(startDate, endDate) {
   try {
-    const formattedStart = formatDateForAPI(startDate);
-    let formattedEnd = formatDateForAPI(endDate);
-    
-    // Thêm 1 ngày nếu cần
-    const endDateObj = new Date(formattedEnd);
-    endDateObj.setDate(endDateObj.getDate() + 1);
-    formattedEnd = endDateObj.toISOString().split('T')[0];
-    
-    const url = `${worker_url}/get_historical_data?startDate=${formattedStart}&endDate=${formattedEnd}`;
-      const response = await fetch(url);
+      const formattedStart = formatDateForAPI(startDate);
+      const formattedEnd = formatDateForAPI(endDate);
+      
+      const url = `${worker_url}/get_historical_data?startDate=${formattedStart}&endDate=${formattedEnd}`;
+      const response = await fetch(url, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+      });
+      
+      if (!response.ok) {
+          throw new Error(`Yêu cầu API thất bại: ${response.status} ${response.statusText}`);
+      }
+      
       const result = await response.json();
       
-      if (result.success) {
-          if (result.data && result.data.length > 0) {
-              return result.data;
-          } else {
-              throw new Error("Không có dữ liệu trong khoảng thời gian này");
-          }
-      } else {
-          throw new Error(result.error || "Không thể lấy dữ liệu lịch sử");
+      if (!result.success) {
+          throw new Error(result.error || "API trả về lỗi không xác định");
       }
+      
+      if (!result.data || result.data.length === 0) {
+          throw new Error("Không có dữ liệu trong khoảng thời gian này");
+      }
+      
+      // Định dạng dữ liệu, đảm bảo giá trị là số
+      const formattedData = result.data.map(item => ({
+          timestamp: item.timestamp,
+          data: {
+              temperature: parseFloat(item.data.temperature) || 0,
+              ph: parseFloat(item.data.ph) || 0,
+              tds: parseFloat(item.data.tds) || 0,
+              turbidity: parseFloat(item.data.turbidity) || 0,
+          },
+      }));
+      
+      return formattedData;
   } catch (error) {
       console.error("Lỗi khi lấy dữ liệu lịch sử:", error);
-      throw error;
+      throw new Error(error.message || "Lỗi không xác định khi lấy dữ liệu");
   }
 }
 
 // Hàm chuyển đổi dữ liệu sang CSV
 function convertToCSV(data) {
-    const headers = "Thời gian,Nhiệt độ (°C),Độ pH,TDS (ppm),Độ đục (NTU)";
-    const rows = data.map(item => {
-        const date = new Date(item.timestamp);
-        const timeString = date.toLocaleString();
-        return `${timeString},${item.data.temperature},${item.data.ph},${item.data.tds},${item.data.turbidity}`;
-    });
-    return [headers, ...rows].join("\n");
+  const headers = "Timestamp,Date,Time,Temperature,pH,TDS,Turbidity";
+  const rows = data.map(item => {
+      const date = new Date(item.timestamp);
+      const dateStr = date.toISOString().split('T')[0];
+      const timeStr = date.toTimeString().split(' ')[0];
+      return `${item.timestamp},${dateStr},${timeStr},${item.data.temperature},${item.data.ph},${item.data.tds},${item.data.turbidity}`;
+  });
+  return [headers, ...rows].join("\n");
 }
-
-// Hàm chuyển đổi dữ liệu sang Excel (sử dụng thư viện SheetJS)
+// Hàm chuyển đổi dữ liệu sang Excel (sử dụng SheetJS)
 async function exportToExcel(data, filename = "water_quality_data.xlsx") {
-    try {
-        // Tải thư viện SheetJS nếu chưa có
-        if (!window.XLSX) {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-            script.onload = () => exportToExcel(data, filename);
-            document.head.appendChild(script);
-            return;
-        }
-
-        // Tạo workbook
-        const wb = XLSX.utils.book_new();
-        
-        // Chuẩn bị dữ liệu
-        const excelData = data.map(item => {
-            const date = new Date(item.timestamp);
-            return {
-                "Thời gian": date.toLocaleString(),
-                "Nhiệt độ (°C)": item.data.temperature,
-                "Độ pH": item.data.ph,
-                "TDS (ppm)": item.data.tds,
-                "Độ đục (NTU)": item.data.turbidity
-            };
-        });
-
-        // Tạo worksheet
-        const ws = XLSX.utils.json_to_sheet(excelData);
-        
-        // Thêm worksheet vào workbook
-        XLSX.utils.book_append_sheet(wb, ws, "Chất lượng nước");
-        
-        // Xuất file
-        XLSX.writeFile(wb, filename);
-        
-        return true;
-    } catch (error) {
-        console.error("Lỗi khi xuất Excel:", error);
-        throw error;
-    }
+  try {
+      // Tải thư viện SheetJS nếu chưa có
+      if (!window.XLSX) {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+          script.async = true;
+          document.head.appendChild(script);
+          return new Promise((resolve, reject) => {
+              script.onload = () => resolve(exportToExcel(data, filename));
+              script.onerror = () => reject(new Error("Không thể tải thư viện SheetJS"));
+          });
+      }
+      
+      // Tạo workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Chuẩn bị dữ liệu
+      const excelData = data.map(item => {
+          const date = new Date(item.timestamp);
+          return {
+              "Timestamp": item.timestamp,
+              "Date": date.toISOString().split('T')[0],
+              "Time": date.toTimeString().split(' ')[0],
+              "Temperature": item.data.temperature,
+              "pH": item.data.ph,
+              "TDS": item.data.tds,
+              "Turbidity": item.data.turbidity,
+          };
+      });
+      
+      // Tạo worksheet
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      
+      // Thêm worksheet vào workbook
+      XLSX.utils.book_append_sheet(wb, ws, "Chất lượng nước");
+      
+      // Xuất file
+      XLSX.writeFile(wb, filename);
+      
+      return true;
+  } catch (error) {
+      console.error("Lỗi khi xuất Excel:", error);
+      throw new Error("Không thể xuất file Excel: " + error.message);
+  }
 }
 
-// Xử lý sự kiện tải xuống
+// Xử lý sự kiện tải xuống CSV
 document.getElementById("btnDownloadCSV").addEventListener("click", async function() {
-    const startDate = document.getElementById("startDate").value;
-    const endDate = document.getElementById("endDate").value;
-    
-    if (!startDate || !endDate) {
-        alert("Vui lòng chọn khoảng thời gian");
-        return;
-    }
-    if (new Date(startDate) > new Date(endDate)) {
-      alert("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc");
-      return;
+  const startDate = document.getElementById("startDate").value;
+  const endDate = document.getElementById("endDate").value;
+  
+  if (!validateDates()) return;
+  
+  try {
+      showDownloadProgress(true);
+      updateDownloadStatus("Đang tải dữ liệu...", 0);
+      
+      const data = await fetchHistoricalData(startDate, endDate);
+      updateDownloadStatus("Đang chuyển đổi dữ liệu...", 50);
+      
+      const csvData = convertToCSV(data);
+      updateDownloadStatus("Đang tạo file CSV...", 80);
+      
+      // Tạo blob và tải xuống
+      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `sensor_data_${startDate}_to_${endDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      updateDownloadStatus("Hoàn tất!", 100);
+      showDownloadComplete(true);
+      
+      // Cập nhật thông tin file
+      document.getElementById("downloadRecordsCount").textContent = `${data.length} bản ghi`;
+      document.getElementById("downloadFileSize").textContent = `${(blob.size / 1024 / 1024).toFixed(2)} MB`;
+      document.getElementById("downloadSpeed").textContent = "N/A";
+      document.getElementById("downloadTimeRemaining").textContent = "0 giây";
+  } catch (error) {
+      showDownloadError(error.message);
   }
-    
-    try {
-        showDownloadProgress(true);
-        updateDownloadStatus("Đang tải dữ liệu...", 0);
-        
-        const data = await fetchHistoricalData(startDate, endDate);
-        if (data.length === 0) {
-          showDownloadError("Không có dữ liệu trong khoảng thời gian này");
-          return;
-      }
-        updateDownloadStatus("Đang chuyển đổi dữ liệu...", 50);
-        
-        const csvData = convertToCSV(data);
-        updateDownloadStatus("Đang tạo file CSV...", 80);
-        
-        // Tạo blob và tải xuống
-        const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `water_quality_${startDate}_to_${endDate}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        updateDownloadStatus("Hoàn tất!", 100);
-        showDownloadComplete(true);
-        
-        // Cập nhật thông tin file
-        document.getElementById("downloadRecordsCount").textContent = `${data.length} bản ghi`;
-        document.getElementById("downloadFileSize").textContent = `${(blob.size / 1024 / 1024).toFixed(2)} MB`;
-        
-    } catch (error) {
-        showDownloadError(error.message);
-    }
 });
-
+// Xử lý sự kiện tải xuống Excel
 document.getElementById("btnDownloadData").addEventListener("click", async function() {
-    const startDate = document.getElementById("startDate").value;
-    const endDate = document.getElementById("endDate").value;
-    
-    if (!startDate || !endDate) {
-        alert("Vui lòng chọn khoảng thời gian");
-        return;
-    }
-    if (new Date(startDate) > new Date(endDate)) {
-      alert("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc");
-      return;
-    }
-    
-    try {
-        showDownloadProgress(true);
-        updateDownloadStatus("Đang tải dữ liệu...", 0);
-        
-        const data = await fetchHistoricalData(startDate, endDate);
-        updateDownloadStatus("Đang chuyển đổi dữ liệu...", 50);
-        
-        await exportToExcel(data, `water_quality_${startDate}_to_${endDate}.xlsx`);
-        updateDownloadStatus("Hoàn tất!", 100);
-        showDownloadComplete(true);
-        
-        // Ước lượng kích thước file (vì không có blob chính xác)
-        document.getElementById("downloadRecordsCount").textContent = `${data.length} bản ghi`;
-        document.getElementById("downloadFileSize").textContent = `${(data.length * 0.05).toFixed(2)} MB (ước tính)`;
-        
-    } catch (error) {
-        showDownloadError(error.message);
-    }
+  const startDate = document.getElementById("startDate").value;
+  const endDate = document.getElementById("endDate").value;
+  
+  if (!validateDates()) return;
+  
+  try {
+      showDownloadProgress(true);
+      updateDownloadStatus("Đang tải dữ liệu...", 0);
+      
+      const data = await fetchHistoricalData(startDate, endDate);
+      updateDownloadStatus("Đang chuyển đổi dữ liệu...", 50);
+      
+      await exportToExcel(data, `sensor_data_${startDate}_to_${endDate}.xlsx`);
+      updateDownloadStatus("Hoàn tất!", 100);
+      showDownloadComplete(true);
+      
+      // Ước lượng kích thước file
+      document.getElementById("downloadRecordsCount").textContent = `${data.length} bản ghi`;
+      document.getElementById("downloadFileSize").textContent = `${(data.length * 0.05).toFixed(2)} MB (ước tính)`;
+      document.getElementById("downloadSpeed").textContent = "N/A";
+      document.getElementById("downloadTimeRemaining").textContent = "0 giây";
+  } catch (error) {
+      showDownloadError(error.message);
+  }
 });
 
 // Các hàm hỗ trợ hiển thị tiến trình tải xuống
 function showDownloadProgress(show) {
-    const container = document.getElementById("downloadProgressContainer");
-    container.style.display = show ? "block" : "none";
-    
-    if (!show) {
-        document.getElementById("downloadComplete").style.display = "none";
-        document.getElementById("downloadError").style.display = "none";
-    }
+  const container = document.getElementById("downloadProgressContainer");
+  container.style.display = show ? "block" : "none";
+  
+  if (!show) {
+      document.getElementById("downloadComplete").style.display = "none";
+      document.getElementById("downloadError").style.display = "none";
+  }
 }
 
 function updateDownloadStatus(text, percent) {
-    document.getElementById("downloadStatusText").textContent = text;
-    document.getElementById("downloadPercentage").textContent = `${percent}%`;
-    document.getElementById("downloadProgress").style.width = `${percent}%`;
-    document.getElementById("downloadProgress").setAttribute("aria-valuenow", percent);
+  document.getElementById("downloadStatusText").textContent = text;
+  document.getElementById("downloadPercentage").textContent = `${percent}%`;
+  document.getElementById("downloadProgress").style.width = `${percent}%`;
+  document.getElementById("downloadProgress").setAttribute("aria-valuenow", percent);
 }
+
 
 function showDownloadComplete(show) {
-    document.getElementById("downloadComplete").style.display = show ? "block" : "none";
-    if (show) {
-        document.getElementById("downloadError").style.display = "none";
-    }
+  document.getElementById("downloadComplete").style.display = show ? "block" : "none";
+  if (show) {
+      document.getElementById("downloadError").style.display = "none";
+  }
 }
+// Hàm xác thực ngày
 function validateDates() {
-    const startDate = document.getElementById("startDate").value;
-    const endDate = document.getElementById("endDate").value;
-    
-    if (!startDate || !endDate) {
-        alert("Vui lòng chọn khoảng thời gian");
-        return false;
-    }
-    
-    if (new Date(startDate) > new Date(endDate)) {
-        alert("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc");
-        return false;
-    }
-    
-    return true;
+  const startDate = document.getElementById("startDate").value;
+  const endDate = document.getElementById("endDate").value;
+  
+  if (!startDate || !endDate) {
+      alert("Vui lòng chọn khoảng thời gian");
+      return false;
+  }
+  
+  if (new Date(startDate) > new Date(endDate)) {
+      alert("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc");
+      return false;
+  }
+  
+  return true;
 }
 function showDownloadError(message) {
-    document.getElementById("errorMessage").textContent = message;
-    document.getElementById("downloadError").style.display = "block";
-    document.getElementById("downloadComplete").style.display = "none";
+  document.getElementById("errorMessage").textContent = message;
+  document.getElementById("downloadError").style.display = "block";
+  document.getElementById("downloadComplete").style.display = "none";
 }
-
 // Xử lý thử lại khi có lỗi
 document.getElementById("retryDownload").addEventListener("click", function() {
-    document.getElementById("downloadError").style.display = "none";
-    document.getElementById("btnDownloadData").click();
+  document.getElementById("downloadError").style.display = "none";
+  document.getElementById("btnDownloadData").click();
 });
 
-// Cập nhật ngày mặc định (hôm nay)
+
+// Cập nhật ngày mặc định (dựa trên dữ liệu CSV mẫu)
 document.addEventListener("DOMContentLoaded", function() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById("startDate").value = today;
-    document.getElementById("endDate").value = today;
+  const today = new Date("2025-04-16");
+  const yesterday = new Date("2025-04-15");
+  document.getElementById("startDate").value = yesterday.toISOString().split('T')[0];
+  document.getElementById("endDate").value = today.toISOString().split('T')[0];
+  getData();
 });
+// Kiểm tra liên tục nếu đang trong chế độ đo
+setInterval(() => {
+  if (isMeasuring) {
+      getData();
+  }
+}, 2000);
 
   </script>
   </body>
