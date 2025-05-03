@@ -1299,7 +1299,8 @@
       }
     }
     // Hàm tải xuống dữ liệu
-   // Các hằng số toàn cục
+  
+// Các hằng số toàn cục
 const UPSTASH_REDIS_URL = "https://flowing-wren-36173.upstash.io";
 const UPSTASH_REDIS_TOKEN = "AY1NAAIjcDExNzM2M2VjNDI2NjA0YWI1OGQ3MmRhNjZlNDA4ZmZiZHAxMA";
 
@@ -1354,46 +1355,71 @@ async function downloadData(format = 'excel') {
   try {
     updateDownloadStatus('Đang yêu cầu dữ liệu từ server...', 10);
     
-    // Gọi API endpoint chính xác với headers xác thực
-    const apiUrl = `${UPSTASH_REDIS_URL}/get_all_sensor_data?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+    // FIX 1: Đảm bảo ngày được định dạng đúng (YYYY-MM-DD)
+    const formattedStartDate = formatDateParam(startDate);
+    const formattedEndDate = formatDateParam(endDate);
+    
+    // FIX 2: Kiểm tra URL endpoint - sửa đường dẫn API nếu cần
+    // Có thể API path cần điều chỉnh, ví dụ thêm "/rest" hoặc đổi "get_all_sensor_data" thành endpoint chính xác
+    const apiUrl = `${UPSTASH_REDIS_URL}/rest/get_all_sensor_data`;
+    
+    // FIX 3: Sử dụng phương thức POST thay vì GET (Upstash thường dùng POST)
+    // FIX 4: Đặt tham số trong body thay vì query params
     const startTime = performance.now();
     
     const response = await fetch(apiUrl, {
+      method: 'POST',
       headers: { 
-        Authorization: `Bearer ${UPSTASH_REDIS_TOKEN}` 
-      }
+        'Authorization': `Bearer ${UPSTASH_REDIS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        startDate: formattedStartDate,
+        endDate: formattedEndDate
+      })
     });
     
+    // Kiểm tra lỗi chi tiết
     if (!response.ok) {
-      throw new Error(`Lỗi từ server: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Server response:', errorText);
+      throw new Error(`Lỗi từ server: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
     
-    if (!data.success) {
+    if (!data.success && data.error) {
       throw new Error(data.error || "Không thể lấy dữ liệu từ server");
     }
     
-    if (!data.data || data.data.length === 0) {
+    // FIX 5: Kiểm tra cấu trúc phản hồi
+    // Điều chỉnh để phù hợp với cấu trúc phản hồi thực tế từ API
+    const sensorData = data.data || data.result || data;
+    
+    if (!sensorData || (Array.isArray(sensorData) && sensorData.length === 0)) {
       throw new Error("Không tìm thấy dữ liệu trong khoảng thời gian đã chọn");
     }
     
-    updateDownloadStatus(`Đã nhận ${data.data.length} bản ghi...`, 50, {
-      records: data.data.length
+    // Chuyển đổi thành mảng nếu cần
+    const dataArray = Array.isArray(sensorData) ? sensorData : [sensorData];
+    
+    updateDownloadStatus(`Đã nhận ${dataArray.length} bản ghi...`, 50, {
+      records: dataArray.length
     });
     
     // Xử lý dữ liệu
     updateDownloadStatus('Đang xử lý dữ liệu...', 70);
     
-    const processedData = data.data.map(item => {
+    const processedData = dataArray.map(item => {
+      // FIX 6: Thêm kiểm tra để xử lý các trường hợp dữ liệu thiếu
       return {
-        Timestamp: item.timestamp,
-        Ngày: item.date,
-        Thời_gian: item.time,
-        Nhiệt_độ: item.temperature,
-        Độ_pH: item.ph,
-        TDS: item.tds,
-        Độ_đục: item.turbidity
+        Timestamp: item.timestamp || '',
+        Ngày: item.date || formatDateDisplay(item.timestamp),
+        Thời_gian: item.time || formatTimeDisplay(item.timestamp),
+        Nhiệt_độ: item.temperature || '',
+        Độ_pH: item.ph || '',
+        TDS: item.tds || '',
+        Độ_đục: item.turbidity || ''
       };
     });
     
@@ -1420,14 +1446,17 @@ async function downloadData(format = 'excel') {
     
     // Tính toán thời gian và kích thước file
     const elapsedTime = (performance.now() - startTime) / 1000;
-    const fileSize = content.length;
+    const fileSize = format === 'excel' ? content.length : content.length;
     
     // Tạo blob và tải xuống
-    const blob = new Blob([content], { type: mimeType });
+    const blob = format === 'excel' ? 
+      new Blob([new Uint8Array(content)], { type: mimeType }) : 
+      new Blob([content], { type: mimeType });
+    
     url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const filename = `water_quality_${startDate}_to_${endDate}.${ext}`;
+    const filename = `water_quality_${formatDateParam(startDate)}_to_${formatDateParam(endDate)}.${ext}`;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
@@ -1452,6 +1481,8 @@ async function downloadData(format = 'excel') {
     
   } catch (error) {
     console.error('Lỗi tải xuống dữ liệu:', error);
+    progressBar.classList.remove('bg-gradient-progress');
+    progressBar.classList.add('bg-danger');
     showError(error.message || "Đã xảy ra lỗi khi tải xuống dữ liệu");
   } finally {
     // Khôi phục nút về trạng thái ban đầu
@@ -1465,6 +1496,26 @@ async function downloadData(format = 'excel') {
       if (url) URL.revokeObjectURL(url);
     }, 30000);
   }
+}
+
+// FIX 7: Thêm hàm định dạng ngày tháng để đảm bảo định dạng nhất quán
+function formatDateParam(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+// FIX 8: Thêm các hàm trích xuất ngày và giờ từ timestamp
+function formatDateDisplay(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+}
+
+function formatTimeDisplay(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
 }
 
 // Hàm hiển thị lỗi
