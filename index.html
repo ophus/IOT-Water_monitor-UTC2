@@ -1443,20 +1443,25 @@ async function fetchHistoricalData(startDate, endDate) {
       const formattedStart = formatDateForAPI(startDate);
       const formattedEnd = formatDateForAPI(endDate);
       
-      console.log(`📡 Gửi yêu cầu API: ${worker_url}/get_historical_data?startDate=${formattedStart}&endDate=${formattedEnd}`);
+      // Thêm giới hạn cao để lấy được nhiều dữ liệu
+      const limit = 10000;
       
-      const url = `${worker_url}/get_historical_data?startDate=${formattedStart}&endDate=${formattedEnd}`;
+      console.log(`📡 Gửi yêu cầu API: ${worker_url}/get_historical_data?startDate=${formattedStart}&endDate=${formattedEnd}&limit=${limit}`);
+      
+      const url = `${worker_url}/get_historical_data?startDate=${formattedStart}&endDate=${formattedEnd}&limit=${limit}`;
       const response = await fetch(url, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
       });
       
       if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Yêu cầu API thất bại: ${response.status} ${response.statusText}`, errorText);
           throw new Error(`Yêu cầu API thất bại: ${response.status} ${response.statusText}`);
       }
       
       const result = await response.json();
-      console.log("📥 Phản hồi API:", result);
+      console.log(`📥 Phản hồi API: Nhận được ${result.data?.length || 0} bản ghi`);
       
       if (!result.success) {
           throw new Error(result.error || "API trả về lỗi không xác định");
@@ -1464,6 +1469,13 @@ async function fetchHistoricalData(startDate, endDate) {
       
       if (!result.data || result.data.length === 0) {
           throw new Error("Không có dữ liệu trong khoảng thời gian này");
+      }
+      
+      // Hiển thị thông báo về số lượng bản ghi
+      console.log(`Tìm thấy ${result.data.length} bản ghi trong khoảng từ ${formattedStart} đến ${formattedEnd}`);
+      // Hiển thị UI thông báo (nếu có)
+      if (typeof updateStatus === 'function') {
+          updateStatus(`Đã tải ${result.data.length} bản ghi`);
       }
       
       const formattedData = result.data.map((item, index) => {
@@ -1499,7 +1511,10 @@ async function fetchHistoricalData(startDate, endDate) {
               turbidity: parseFloat(data.turbidity || 0)
           };
           
-          console.log(`Dữ liệu bản ghi ${index}: timestamp=${timestamp}, data=`, safeData);
+          if (index < 5 || index >= result.data.length - 5) {
+              // Log một số bản ghi đầu và cuối để kiểm tra
+              console.log(`Dữ liệu bản ghi ${index}: timestamp=${timestamp}, data=`, safeData);
+          }
           
           return {
               timestamp: timestamp,
@@ -1507,30 +1522,14 @@ async function fetchHistoricalData(startDate, endDate) {
           };
       });
       
-      // Chuyển đổi startDate và endDate sang timestamp để so sánh
-      const startTimestamp = new Date(formattedStart).getTime();
-      const endTimestamp = new Date(formattedEnd).setHours(23, 59, 59, 999);
-      
-      console.log(`Lọc dữ liệu từ ${startTimestamp} đến ${endTimestamp}`);
-      
-      // Giải pháp 1: Bỏ lọc theo timestamp vì API đã lọc rồi
-      // return formattedData;
-      
-      // Giải pháp 2: Làm lỏng điều kiện lọc (chỉ cần có ít nhất 1 bản ghi)
-      const validData = formattedData.filter(item => {
-          // Đảm bảo timestamp là số
-          const ts = typeof item.timestamp === 'string' ? parseInt(item.timestamp) : item.timestamp;
-          return !isNaN(ts); // Chỉ cần timestamp hợp lệ
-      });
-      
-      if (validData.length === 0) {
-          throw new Error("Dữ liệu trả về không khớp với khoảng thời gian yêu cầu");
-      }
-      
-      console.log(`✅ Tìm thấy ${validData.length} bản ghi hợp lệ`);
-      return validData;
+      console.log(`✅ Đã xử lý xong ${formattedData.length} bản ghi hợp lệ`);
+      return formattedData;
   } catch (error) {
       console.error("❌ Lỗi khi lấy dữ liệu lịch sử:", error);
+      // Hiển thị lỗi trong UI (nếu có)
+      if (typeof showError === 'function') {
+          showError(error.message || "Lỗi không xác định khi lấy dữ liệu");
+      }
       throw new Error(error.message || "Lỗi không xác định khi lấy dữ liệu");
   }
 }
