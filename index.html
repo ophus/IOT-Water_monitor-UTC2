@@ -1256,7 +1256,7 @@ async function fetchHistoricalData(startDate, endDate) {
       const formattedEnd = formatDateForAPI(endDate);
       
       // Thêm giới hạn cao để lấy được nhiều dữ liệu
-      const limit = 10000;
+      const limit = 200;
       
       console.log(`📡 Gửi yêu cầu API: ${worker_url}/get_historical_data?startDate=${formattedStart}&endDate=${formattedEnd}&limit=${limit}`);
       
@@ -1278,8 +1278,10 @@ async function fetchHistoricalData(startDate, endDate) {
       if (!result.success) {
           throw new Error(result.error || "API trả về lỗi không xác định");
       }
-      
+      // Log dữ liệu trả về để debug
+      console.log("[DEBUG] API trả về:", result);
       if (!result.data || result.data.length === 0) {
+          alert("Không có dữ liệu trong khoảng thời gian này!\n[DEBUG] API trả về: " + JSON.stringify(result));
           throw new Error("Không có dữ liệu trong khoảng thời gian này");
       }
       
