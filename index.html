@@ -1356,7 +1356,7 @@ function convertToCSV(data) {
       const date = new Date(item.timestamp);
       const dateStr = date.toISOString().split('T')[0];
       const timeStr = date.toTimeString().split(' ')[0];
-      return `${item.timestamp},${dateStr},${timeStr},${item.data.temperature},${item.data.ph},${item.data.tds},${item.data.turbidity}`;
+      return `${item.timestamp},${dateStr},${timeStr},${item.temperature},${item.ph},${item.tds},${item.turbidity}`;
   });
   return [headers, ...rows].join("\n");
 }
@@ -1385,10 +1385,10 @@ async function exportToExcel(data, filename = "water_quality_data.xlsx") {
               "Timestamp": item.timestamp,
               "Date": date.toISOString().split('T')[0],
               "Time": date.toTimeString().split(' ')[0],
-              "Temperature": item.data.temperature,
-              "pH": item.data.ph,
-              "TDS": item.data.tds,
-              "Turbidity": item.data.turbidity,
+              "Temperature": item.temperature,
+              "pH": item.ph,
+              "TDS": item.tds,
+              "Turbidity": item.turbidity,
           };
       });
       
