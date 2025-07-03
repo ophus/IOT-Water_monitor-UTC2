@@ -1,4 +1,5 @@
 #include <WiFiManager.h>
+#include <WebServer.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
@@ -7,24 +8,559 @@
 #include <DallasTemperature.h>
 #include "DFRobot_PH.h"
 #include <EEPROM.h>
+#include <SPIFFS.h>
+#include <WiFiClient.h>
+#include <WiFiUdp.h>
+#include <NTPClient.h>
 
-#define UPDATE_INTERVAL 30000
-#define POLL_INTERVAL 2000
-#define DATA_SEND_INTERVAL 2000
+// Thêm FTP Server
+class FTPServer
+{
+private:
+    WiFiServer server;
+    WiFiClient client;
+    String currentDir;
+    bool dataTransferActive;
+    int dataPort;
+    WiFiServer dataServer;
+    WiFiClient dataClient;
+    bool dataServerStarted;
+    unsigned long lastDataActivity;
+    int passivePort;
 
-#define LED_PIN 2   
-#define PH_PIN 34   
-#define TEMP_PIN 32 
-#define TDS_PIN 33  
-#define TUR_PIN 35  
+public:
+    FTPServer(int port = 21) : server(port), dataPort(20), dataServer(dataPort)
+    {
+        currentDir = "/";
+        dataTransferActive = false;
+        dataServerStarted = false;
+        lastDataActivity = 0;
+        passivePort = 0;
+    }
+
+void begin() {
+  if (!SPIFFS.begin(true)) {
+    Serial.println("❌ SPIFFS Mount Failed");
+    return;
+  }
+  Serial.println("✅ SPIFFS mounted successfully");
+  server.begin();
+  Serial.println("✅ FTP Server started on port 21");
+  Serial.println("📁 FTP Login: user='esp32', password='123456'");
+  Serial.print("🌐 FTP Address: ftp://");
+  Serial.println(WiFi.localIP());
+}
+
+    void handleClient()
+    {
+        // Kiểm tra client mới
+        if (server.hasClient())
+        {
+            if (client && client.connected())
+            {
+                client.stop();
+            }
+            client = server.available();
+            if (client)
+            {
+                Serial.println("📱 FTP Client connected");
+                sendResponse("220 ESP32 FTP Server Ready");
+            }
+        }
+
+        // Xử lý lệnh từ client
+        if (client && client.connected() && client.available())
+        {
+            String command = client.readStringUntil('\n');
+            command.trim();
+            handleFTPCommand(command);
+        }
+
+        // Kiểm tra và đóng kết nối dữ liệu nếu cần
+        if (dataClient && !dataClient.connected())
+        {
+            dataClient.stop();
+            dataTransferActive = false;
+        }
+
+        // Kiểm tra timeout kết nối dữ liệu
+        if (dataTransferActive && (millis() - lastDataActivity > 30000))
+        {
+            cleanupDataConnection();
+        }
+
+        // Kiểm tra kết nối chính
+        if (client && !client.connected())
+        {
+            Serial.println("📱 FTP Client disconnected");
+            cleanupDataConnection();
+        }
+    }
+
+private:
+    void cleanupDataConnection()
+    {
+        if (dataClient)
+        {
+            dataClient.stop();
+        }
+        if (dataServerStarted)
+        {
+            dataServer.stop();
+            dataServerStarted = false;
+        }
+        dataTransferActive = false;
+        passivePort = 0;
+        Serial.println("⚠️ Data connection cleaned up");
+    }
+
+    void sendResponse(String response)
+    {
+        if (client && client.connected())
+        {
+            client.println(response);
+            Serial.println("📤 FTP: " + response);
+        }
+    }
+
+    void handleFTPCommand(String command)
+    {
+        Serial.println("📥 FTP Command: " + command);
+
+        String cmd = command.substring(0, 4);
+        cmd.toUpperCase();
+        String param = "";
+        if (command.length() > 4)
+        {
+            param = command.substring(5);
+        }
+
+        if (cmd == "USER")
+        {
+            if (param == "esp32")
+            {
+                sendResponse("331 User name okay, need password");
+            }
+            else
+            {
+                sendResponse("530 Invalid username");
+            }
+        }
+        else if (cmd == "PASS")
+        {
+            if (param == "123456")
+            {
+                sendResponse("230 User logged in, proceed");
+            }
+            else
+            {
+                sendResponse("530 Invalid password");
+            }
+        }
+        else if (cmd == "SYST")
+        {
+            sendResponse("215 ESP32 SPIFFS File System");
+        }
+        else if (cmd == "PWD" || cmd == "XPWD")
+        {
+            sendResponse("257 \"" + currentDir + "\" is current directory");
+        }
+        else if (cmd == "TYPE")
+        {
+            sendResponse("200 Type set to Binary");
+        }
+        else if (cmd == "PASV")
+        {
+            setupDataConnection();
+        }
+        else if (cmd == "LIST")
+        {
+            sendFileList();
+        }
+        else if (cmd == "CWD")
+        {
+            changeDirectory(param);
+        }
+        else if (cmd == "RETR")
+        {
+            downloadFile(param);
+        }
+        else if (cmd == "STOR")
+        {
+            uploadFile(param);
+        }
+        else if (cmd == "DELE")
+        {
+            deleteFile(param);
+        }
+        else if (cmd == "MKD")
+        {
+            makeDirectory(param);
+        }
+        else if (cmd == "RMD")
+        {
+            removeDirectory(param);
+        }
+        else if (cmd == "SIZE")
+        {
+            getFileSize(param);
+        }
+        else if (cmd == "MDTM")
+        {
+            getFileTime(param);
+        }
+        else if (cmd == "QUIT")
+        {
+            sendResponse("221 Goodbye");
+            client.stop();
+        }
+        else if (cmd == "NOOP")
+        {
+            sendResponse("200 OK");
+        }
+        else
+        {
+            sendResponse("502 Command not implemented");
+        }
+    }
+
+    void setupDataConnection()
+    {
+        // Đóng kết nối dữ liệu cũ nếu có
+        cleanupDataConnection();
+
+        // Tạo port ngẫu nhiên trong khoảng 49152-65535
+        passivePort = random(49152, 65535);
+
+        // Khởi động server dữ liệu trên port mới
+        dataServer = WiFiServer(passivePort);
+        dataServer.begin();
+        dataServerStarted = true;
+        dataTransferActive = false;
+
+        IPAddress ip = WiFi.localIP();
+
+        String response = "227 Entering Passive Mode (";
+        response += String(ip[0]) + "," + String(ip[1]) + "," + String(ip[2]) + "," + String(ip[3]) + ",";
+        response += String(passivePort >> 8) + "," + String(passivePort & 0xFF) + ")";
+
+        sendResponse(response);
+        Serial.println("📡 Data connection setup on port " + String(passivePort));
+        
+        // Đợi một chút để server sẵn sàng
+        delay(100);
+    }
+
+    void sendFileList()
+    {
+        if (!dataServerStarted)
+        {
+            sendResponse("425 No data connection");
+	    setupDataConnection();
+            return;
+        }
+
+        // Đợi kết nối dữ liệu với timeout
+        unsigned long startTime = millis();
+        while (!dataServer.hasClient() && (millis() - startTime < 5000))
+        {
+            delay(10);
+        }
+
+        if (!dataServer.hasClient())
+        {
+            sendResponse("425 No data connection");
+            return;
+        }
+
+        dataClient = dataServer.available();
+        if (!dataClient)
+        {
+            sendResponse("425 No data connection");
+            return;
+        }
+
+        dataTransferActive = true;
+        lastDataActivity = millis();
+        sendResponse("150 Opening data connection for directory list");
+
+        File root = SPIFFS.open(currentDir);
+        if (!root || !root.isDirectory())
+        {
+            sendResponse("550 Failed to open directory");
+            cleanupDataConnection();
+            return;
+        }
+
+        File file = root.openNextFile();
+        while (file && dataClient.connected())
+        {
+            String fileName = String(file.name());
+            String fileInfo = file.isDirectory() ? "drwxr-xr-x" : "-rw-r--r--";
+            fileInfo += " 1 esp32 esp32 ";
+            fileInfo += String(file.size());
+            fileInfo += " Jan 01 12:00 ";
+            fileInfo += fileName.substring(fileName.lastIndexOf('/') + 1);
+
+            dataClient.println(fileInfo);
+            lastDataActivity = millis();
+            file.close();
+            file = root.openNextFile();
+        }
+        root.close();
+
+        if (dataClient.connected())
+        {
+            dataClient.stop();
+        }
+        cleanupDataConnection();
+        sendResponse("226 Transfer complete");
+    }
+
+    void changeDirectory(String dir)
+    {
+        if (dir == "/" || dir == "")
+        {
+            currentDir = "/";
+            sendResponse("250 Directory changed to /");
+        }
+        else if (dir == "..")
+        {
+            if (currentDir != "/")
+            {
+                int lastSlash = currentDir.lastIndexOf('/', currentDir.length() - 2);
+                currentDir = currentDir.substring(0, lastSlash + 1);
+            }
+            sendResponse("250 Directory changed to " + currentDir);
+        }
+        else
+        {
+            String newDir = currentDir;
+            if (!dir.startsWith("/"))
+            {
+                if (!newDir.endsWith("/"))
+                    newDir += "/";
+                newDir += dir;
+            }
+            else
+            {
+                newDir = dir;
+            }
+
+            if (SPIFFS.exists(newDir))
+            {
+                currentDir = newDir;
+                if (!currentDir.endsWith("/"))
+                    currentDir += "/";
+                sendResponse("250 Directory changed to " + currentDir);
+            }
+            else
+            {
+                sendResponse("550 Directory not found");
+            }
+        }
+    }
+
+    void downloadFile(String filename)
+    {
+        if (!dataServerStarted)
+        {
+            sendResponse("425 No data connection");
+            return;
+        }
+
+        // Đợi kết nối dữ liệu với timeout
+        unsigned long startTime = millis();
+        while (!dataServer.hasClient() && (millis() - startTime < 5000))
+        {
+            delay(10);
+        }
+
+        if (!dataServer.hasClient())
+        {
+            sendResponse("425 No data connection");
+            return;
+        }
+
+        dataClient = dataServer.available();
+        if (!dataClient)
+        {
+            sendResponse("425 No data connection");
+            return;
+        }
+
+        dataTransferActive = true;
+        lastDataActivity = millis();
+
+        String fullPath = currentDir + filename;
+        if (currentDir == "/" && filename.startsWith("/"))
+        {
+            fullPath = filename;
+        }
+
+        File file = SPIFFS.open(fullPath, "r");
+        if (!file)
+        {
+            sendResponse("550 File not found");
+            dataClient.stop();
+            cleanupDataConnection();
+            return;
+        }
+
+        sendResponse("150 Opening data connection for file transfer");
+
+        // Gửi file theo block để tăng hiệu suất
+        uint8_t buf[512];
+        while (file.available() && dataClient.connected())
+        {
+            size_t len = file.read(buf, sizeof(buf));
+            if (len > 0)
+            {
+                dataClient.write(buf, len);
+                lastDataActivity = millis();
+            }
+        }
+
+        file.close();
+        dataClient.stop();
+        cleanupDataConnection();
+        sendResponse("226 Transfer complete");
+        Serial.println("📤 File downloaded: " + fullPath);
+    }
+
+    void uploadFile(String filename)
+    {
+        if (!dataServer.hasClient())
+        {
+            sendResponse("425 No data connection");
+            return;
+        }
+
+        dataClient = dataServer.available();
+        if (!dataClient)
+        {
+            sendResponse("425 No data connection");
+            return;
+        }
+
+        String fullPath = currentDir + filename;
+        if (currentDir == "/" && filename.startsWith("/"))
+        {
+            fullPath = filename;
+        }
+
+        File file = SPIFFS.open(fullPath, "w");
+        if (!file)
+        {
+            sendResponse("550 Cannot create file");
+            dataClient.stop();
+            return;
+        }
+
+        sendResponse("150 Opening data connection for file transfer");
+
+        while (dataClient.connected())
+        {
+            if (dataClient.available())
+            {
+                file.write(dataClient.read());
+            }
+            delay(1);
+        }
+
+        file.close();
+        dataClient.stop();
+        sendResponse("226 Transfer complete");
+        Serial.println("📥 File uploaded: " + fullPath);
+    }
+
+    void deleteFile(String filename)
+    {
+        String fullPath = currentDir + filename;
+        if (SPIFFS.remove(fullPath))
+        {
+            sendResponse("250 File deleted");
+            Serial.println("🗑️ File deleted: " + fullPath);
+        }
+        else
+        {
+            sendResponse("550 Delete failed");
+        }
+    }
+
+    void makeDirectory(String dirname)
+    {
+        // SPIFFS không hỗ trợ thư mục thực sự, chỉ mô phỏng
+        sendResponse("257 Directory created");
+    }
+
+    void removeDirectory(String dirname)
+    {
+        sendResponse("250 Directory removed");
+    }
+
+    void getFileSize(String filename)
+    {
+        String fullPath = currentDir + filename;
+        if (SPIFFS.exists(fullPath))
+        {
+            File file = SPIFFS.open(fullPath, "r");
+            if (file)
+            {
+                sendResponse("213 " + String(file.size()));
+                file.close();
+            }
+            else
+            {
+                sendResponse("550 File not found");
+            }
+        }
+        else
+        {
+            sendResponse("550 File not found");
+        }
+    }
+
+    void getFileTime(String filename)
+    {
+        String fullPath = currentDir + filename;
+        if (SPIFFS.exists(fullPath))
+        {
+            File file = SPIFFS.open(fullPath, "r");
+            if (file)
+            {
+                sendResponse("213 " + String(file.getLastWrite()));
+                file.close();
+            }
+            else
+            {
+                sendResponse("550 File not found");
+            }
+        }
+        else
+        {
+            sendResponse("550 File not found");
+        }
+    }
+};
+
+#define UPDATE_INTERVAL 30000   // 30 seconds
+#define POLL_INTERVAL 2000      // 2 seconds
+#define DATA_SEND_INTERVAL 2000 // Send data every 2 seconds
+
+#define LED_PIN 2
+#define PH_PIN 34
+#define TEMP_PIN 32
+#define TDS_PIN 33
+#define TUR_PIN 35
 #define RELAY_PIN1 4
 #define RELAY_PIN2 5
 
 #define VREF 3.3
-#define SCOUNT 15        
-#define BETA 3950  
-#define SERIES_RESISTOR 10000  
-#define K_VALUE 1.0 * (900) 
+#define SCOUNT 15
+#define BETA 3950
+#define SERIES_RESISTOR 10000
+#define K_VALUE 1.0 * (900)
 #define CONVERSION_FACTOR 0.5
 
 // Define các ngưỡng cho phép
@@ -36,9 +572,9 @@
 #define MAX_TEMP 35
 #define MIN_TURBIDITY 0
 #define MAX_TURBIDITY 50
- 
+
 // Thêm các biến toàn cục
-#define MAX_READINGS 50  // Số lượng mẫu tối đa để tính trung bình
+#define MAX_READINGS 50 // Số lượng mẫu tối đa để tính trung bình
 
 float tempReadings[MAX_READINGS];
 float phReadings[MAX_READINGS];
@@ -46,11 +582,11 @@ float tdsReadings[MAX_READINGS];
 float turReadings[MAX_READINGS];
 int readingCount = 0;
 
-const float U0 = 3600.0; 
-int ADC_cal = 1700;  // Giá trị ADC khi pH = 6.86
+const float U0 = 3600.0;
+int ADC_cal = 1700;        // Giá trị ADC khi pH = 6.86
 const float pH_Ref = 6.86; // Giá trị pH tham chiếu
-float Slope = -0.0675; // Giá trị Slope có thể điều chỉn
-int buffer[SCOUNT];  // Bộ đệm lưu giá trị ADC
+float Slope = -0.0675;     // Giá trị Slope có thể điều chỉnh
+int buffer[SCOUNT];        // Bộ đệm lưu giá trị ADC
 float temperature = 0;
 Preferences preferences;
 
@@ -64,16 +600,78 @@ float tdsVoltage = 0, tdsValue = 0;
 bool continuousMeasurement = false;
 
 WebServer server(80);
+FTPServer ftpServer; // Khởi tạo FTP Server
 String workerUrl = "https://esp32-data-receiver.phucminh9395.workers.dev";
 unsigned long lastUpdateTime = 0;
 unsigned long lastPollTime = 0;
 unsigned long lastDataSendTime = 0;
 bool sendDataEnabled = false;
-#define HEARTBEAT_INTERVAL 10000 // 5 giây
+#define HEARTBEAT_INTERVAL 10000 // 10 seconds
 unsigned long lastHeartbeatTime = 0;
 
-void sendIPToWorker() {
-    if (WiFi.status() == WL_CONNECTED) {
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 7 * 3600, 60000); // UTC+7, update mỗi 60s
+
+// Hàm ghi log vào SPIFFS
+void writeLogToFile(String message)
+{
+    File logFile = SPIFFS.open("/sensor_log.txt", "a");
+    if (logFile)
+    {
+        String timestamp = String(millis() / 1000) + "s: ";
+        logFile.println(timestamp + message);
+        logFile.close();
+        Serial.println("📝 Log saved: " + message);
+    }
+}
+
+// Hàm tạo file cấu hình mẫu
+void createConfigFiles()
+{
+    // Tạo file config.json
+    File configFile = SPIFFS.open("/config.json", "w");
+    if (configFile)
+    {
+        DynamicJsonDocument config(512);
+        config["device_name"] = "ESP32_Water_Monitor";
+        config["update_interval"] = UPDATE_INTERVAL;
+        config["poll_interval"] = POLL_INTERVAL;
+        config["worker_url"] = workerUrl;
+        config["ftp_user"] = "esp32";
+        config["ftp_pass"] = "123456";
+
+        String jsonString;
+        serializeJson(config, jsonString);
+        configFile.print(jsonString);
+        configFile.close();
+        Serial.println("✅ Config file created");
+    }
+
+    // Tạo file readme.txt
+    File readmeFile = SPIFFS.open("/readme.txt", "w");
+    if (readmeFile)
+    {
+        readmeFile.println("ESP32 Water Monitoring System");
+        readmeFile.println("============================");
+        readmeFile.println("Files in this system:");
+        readmeFile.println("- config.json: Configuration file");
+        readmeFile.println("- sensor_log.txt: Sensor data log");
+        readmeFile.println("- readme.txt: This file");
+        readmeFile.println("");
+        readmeFile.println("FTP Access:");
+        readmeFile.println("- Server: " + WiFi.localIP().toString());
+        readmeFile.println("- Port: 21");
+        readmeFile.println("- Username: esp32");
+        readmeFile.println("- Password: 123456");
+        readmeFile.close();
+        Serial.println("✅ Readme file created");
+    }
+}
+
+void sendIPToWorker()
+{
+    if (WiFi.status() == WL_CONNECTED)
+    {
         HTTPClient http;
         http.begin(workerUrl + "/update_ip");
         http.addHeader("Content-Type", "application/json");
@@ -86,24 +684,31 @@ void sendIPToWorker() {
     }
 }
 
-void checkAndUpdateIP() {
-    if (WiFi.status() != WL_CONNECTED) {
+void checkAndUpdateIP()
+{
+    if (WiFi.status() != WL_CONNECTED)
+    {
         Serial.println("❌ Mất kết nối WiFi! Thử kết nối lại...");
         WiFi.reconnect();
         delay(5000);
-        if (WiFi.status() != WL_CONNECTED) {
+        if (WiFi.status() != WL_CONNECTED)
+        {
             Serial.println("🚨 WiFi vẫn không kết nối, khởi động lại ESP32!");
             ESP.restart();
         }
-    } else if (millis() - lastUpdateTime > UPDATE_INTERVAL) {
+    }
+    else if (millis() - lastUpdateTime > UPDATE_INTERVAL)
+    {
         sendIPToWorker();
         lastUpdateTime = millis();
     }
 }
 
 // Hàm thêm dữ liệu vào mảng
-void addReadings(float temp, float ph, float tds, float turbidity) {
-    if (readingCount < MAX_READINGS) {
+void addReadings(float temp, float ph, float tds, float turbidity)
+{
+    if (readingCount < MAX_READINGS)
+    {
         tempReadings[readingCount] = temp;
         phReadings[readingCount] = ph;
         tdsReadings[readingCount] = tds;
@@ -113,22 +718,28 @@ void addReadings(float temp, float ph, float tds, float turbidity) {
 }
 
 // Hàm tính giá trị trung bình
-float calculateAverage(float arr[], int size) {
+float calculateAverage(float arr[], int size)
+{
     float sum = 0;
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
         sum += arr[i];
     }
     return sum / size;
 }
 
-int getMedianNum(int bArray[], int iFilterLen) {
+int getMedianNum(int bArray[], int iFilterLen)
+{
     int bTab[iFilterLen];
     for (byte i = 0; i < iFilterLen; i++)
         bTab[i] = bArray[i];
     int i, j, bTemp;
-    for (j = 0; j < iFilterLen - 1; j++) {
-        for (i = 0; i < iFilterLen - j - 1; i++) {
-            if (bTab[i] > bTab[i + 1]) {
+    for (j = 0; j < iFilterLen - 1; j++)
+    {
+        for (i = 0; i < iFilterLen - j - 1; i++)
+        {
+            if (bTab[i] > bTab[i + 1])
+            {
                 bTemp = bTab[i];
                 bTab[i] = bTab[i + 1];
                 bTab[i + 1] = bTemp;
@@ -138,17 +749,20 @@ int getMedianNum(int bArray[], int iFilterLen) {
     return (iFilterLen & 1) > 0 ? bTab[(iFilterLen - 1) / 2] : (bTab[iFilterLen / 2] + bTab[iFilterLen / 2 - 1]) / 2;
 }
 
-float tempRead(){
+float tempRead()
+{
     sensors.requestTemperatures();
     temperature = sensors.getTempCByIndex(0); // Đọc nhiệt độ (°C)
     return temperature;
 }
 
-float tdsRead(){
-  // Lưu giá trị ADC vào bộ đệm
+float tdsRead()
+{
+    // Lưu giá trị ADC vào bộ đệm
     analogBuffer[analogBufferIndex] = analogRead(TDS_PIN);
     analogBufferIndex++;
-    if (analogBufferIndex == SCOUNT) analogBufferIndex = 0;
+    if (analogBufferIndex == SCOUNT)
+        analogBufferIndex = 0;
 
     // Lọc giá trị ADC bằng thuật toán trung vị
     int filteredADC = getMedianNum(analogBuffer, SCOUNT);
@@ -164,207 +778,265 @@ float tdsRead(){
     return tdsValue;
 }
 
-float phRead() {
-  for (int i = 0; i < SCOUNT; i++) {
-    buffer[i] = analogRead(PH_PIN);
-    delay(10);  // Delay nhỏ để tránh nhiễu
-  }
+float phRead()
+{
+    for (int i = 0; i < SCOUNT; i++)
+    {
+        buffer[i] = analogRead(PH_PIN);
+        delay(10); // Delay nhỏ để tránh nhiễu
+    }
 
-  int rawADC = getMedianNum(buffer, SCOUNT);  // Lọc giá trị ADC bằng trung vị
-  float phVoltage = (rawADC / 4095.0) * VREF;   // Chuyển đổi ADC sang Volt
+    int rawADC = getMedianNum(buffer, SCOUNT);  // Lọc giá trị ADC bằng trung vị
+    float phVoltage = (rawADC / 4095.0) * VREF; // Chuyển đổi ADC sang Volt
 
-  float real_phVoltage = phVoltage * ((10+20)/20);
+    float real_phVoltage = phVoltage * ((10 + 20) / 20);
 
-  // Tính toán pH theo đường tuyến tính - FIXED FORMULA
-  float phValue = pH_Ref + Slope * (real_phVoltage - ADC_cal / 4095.0 * VREF);
-  return phValue;
+    // Tính toán pH theo đường tuyến tính - FIXED FORMULA
+    float phValue = pH_Ref + Slope * (real_phVoltage - ADC_cal / 4095.0 * VREF);
+    return phValue;
 }
 
-float convertTurbidity(int analogValue) {
+float convertTurbidity(int analogValue)
+{
     float Um = (analogValue / 4095.0) * 5000;
     float f = Um / U0;
     return (f >= 0.98 && f <= 1.000) ? 0 : map(f * 100, 0, 100, 1000, 0);
 }
 
-float turRead(){
+float turRead()
+{
     int turRaw = analogRead(TUR_PIN);
     float turbidity = convertTurbidity(turRaw);
-    if (turbidity < 0) { turbidity = 0;}
+    if (turbidity < 0)
+    {
+        turbidity = 0;
+    }
     return turbidity;
 }
 
-String getSensorData() {
+DynamicJsonDocument getSensorData()
+{
+    float temperature = round(tempRead() * 100) / 100;
+    float phValue = round(phRead() * 100) / 100;
+    float tdsValue = round(tdsRead() * 100) / 100;
+    float turbidity = round(turRead() * 100) / 100;
 
-    float temperature = round(tempRead() * 100)/100;
-    float phValue = round(phRead()* 100)/100;
-    float tdsValue = round(tdsRead()* 100)/100;
-    float turbidity = round(turRead()* 100)/100;
+    addReadings(temperature, phValue, tdsValue, turbidity);
 
-    addReadings(temperature,phValue,tdsValue,turbidity);
+    // Ghi log vào file
+    String logMessage = "T:" + String(temperature) + "°C, pH:" + String(phValue) +
+                        ", TDS:" + String(tdsValue) + "ppm, Turbidity:" + String(turbidity) + "NTU";
+    writeLogToFile(logMessage);
 
     DynamicJsonDocument doc(512);
     doc["temperature"] = temperature;
     doc["ph"] = phValue;
     doc["tds"] = tdsValue;
     doc["turbidity"] = turbidity;
-    String json;
-    serializeJson(doc, json);
-    return json;
+    // --- Gửi timestamp thực tế từ NTP ---
+    doc["timestamp"] = timeClient.getEpochTime() * 1000; // mili-giây
+    return doc;
 }
 
-void sendSensorDataToWorker() {
-    if (WiFi.status() == WL_CONNECTED) {
+void sendSensorDataToWorker()
+{
+    if (WiFi.status() == WL_CONNECTED)
+    {
         HTTPClient http;
         http.begin(workerUrl + "/push_data");
         http.addHeader("Content-Type", "application/json");
-        String jsonPayload = getSensorData();
+        DynamicJsonDocument doc = getSensorData();
+        String jsonPayload;
+        serializeJson(doc, jsonPayload);
         Serial.println("📤 Gửi dữ liệu cảm biến: " + jsonPayload);
         int httpResponseCode = http.POST(jsonPayload);
         Serial.print("📤 Mã phản hồi: ");
         Serial.println(httpResponseCode);
-        if (httpResponseCode == HTTP_CODE_OK) {
+        if (httpResponseCode == HTTP_CODE_OK)
+        {
             String response = http.getString();
             Serial.print("📤 Phản hồi: ");
             Serial.println(response);
-        } else {
+        }
+        else
+        {
             Serial.print("❌ Lỗi gửi dữ liệu, mã: ");
             Serial.println(httpResponseCode);
         }
         http.end();
-    } else {
+    }
+    else
+    {
         Serial.println("❌ WiFi không kết nối, không thể gửi dữ liệu!");
     }
 }
 
-void pollForCommands() {
-    if (WiFi.status() != WL_CONNECTED) { // kiem tra ket noi wifi
+void pollForCommands()
+{
+    if (WiFi.status() != WL_CONNECTED)
+    { // kiem tra ket noi wifi
         Serial.println("❌ WiFi không kết nối, không thể thăm dò lệnh!");
         return;
     }
-    
+
     Serial.println("📥 Đang thăm dò lệnh...");
     HTTPClient http;
     http.begin(workerUrl + "/poll_command");
     http.addHeader("Content-Type", "application/json");
     int httpResponseCode = http.POST("{}");
     Serial.print("📥 Mã phản hồi: ");
-    Serial.println(httpResponseCode); 
-    if (httpResponseCode == HTTP_CODE_OK) {
+    Serial.println(httpResponseCode);
+    if (httpResponseCode == HTTP_CODE_OK)
+    {
         String response = http.getString();
         Serial.print("📥 Dữ liệu JSON thô: ");
         Serial.println(response);
-        
+
         // Kiểm tra xem response có rỗng hoặc không phải JSON không
-        if (response.length() == 0 || response.equals("{}") || response.equals("[]")) {
+        if (response.length() == 0 || response.equals("{}") || response.equals("[]"))
+        {
             Serial.println("📥 Không có lệnh mới.");
             http.end();
             return;
         }
-        
+
         DynamicJsonDocument doc(512); // Tăng kích thước buffer
         DeserializationError error = deserializeJson(doc, response);
-        
-        if (!error) {
+
+        if (!error)
+        {
             // Kiểm tra xem JSON có chứa các chữ số là key không (format từ worker)
-            if (doc.containsKey("0")) {
+            if (doc.containsKey("0"))
+            {
                 // Xây dựng lại lệnh từ các ký tự riêng lẻ
                 String action = "";
                 int index = 0;
                 char indexStr[3];
-                while (true) {
+                while (true)
+                {
                     sprintf(indexStr, "%d", index);
-                    if (!doc.containsKey(indexStr)) break;
+                    if (!doc.containsKey(indexStr))
+                        break;
                     action += doc[indexStr].as<String>();
                     index++;
                 }
-                
+
                 Serial.print("✅ Đã tạo lại lệnh từ các ký tự riêng lẻ: ");
                 Serial.println(action);
-                
-                if (action.length() > 0) {
+
+                if (action.length() > 0)
+                {
                     String result = executeCommand(action);
                     sendCommandResult(action, result);
                 }
             }
             // Vẫn giữ lại kiểm tra action cũ nếu format thay đổi trong tương lai
-            else if (doc.containsKey("action")) {
+            else if (doc.containsKey("action"))
+            {
                 String action = doc["action"].as<String>();
                 Serial.print("✅ Thực thi lệnh: ");
                 Serial.println(action);
                 String result = executeCommand(action);
                 sendCommandResult(action, result);
-            } else {
+            }
+            else
+            {
                 Serial.println("❌ JSON không theo định dạng mong đợi!");
             }
-        } else {
+        }
+        else
+        {
             Serial.print("❌ Lỗi phân tích JSON: ");
             Serial.println(error.c_str());
         }
-    } else {
+    }
+    else
+    {
         Serial.println("❌ Không thể thăm dò lệnh.");
     }
     http.end();
 }
 
-String executeCommand(String action) {
-    if (action == "measure") {
+String executeCommand(String action)
+{
+    if (action == "measure")
+    {
         continuousMeasurement = true;
         Serial.println("✅ Continuous measurement enabled");
+        writeLogToFile("Measurement started");
         return "Measurement started";
-    } else if (action == "test") {
+    }
+    else if (action == "test")
+    {
         // Single measurement
         sendSensorDataToWorker();
         Serial.println("✅ Single test measurement sent");
+        writeLogToFile("Test measurement completed");
         return "Test measurement completed";
-    } else if (action == "stop") {
+    }
+    else if (action == "stop")
+    {
         continuousMeasurement = false;
         Serial.println("⏹️ Measurement stopped");
+        writeLogToFile("Measurement stopped");
 
-        if (readingCount > 0) {
+        if (readingCount > 0)
+        {
             // Tính giá trị trung bình
             float avgTemp = calculateAverage(tempReadings, readingCount);
             float avgPH = calculateAverage(phReadings, readingCount);
             float avgTDS = calculateAverage(tdsReadings, readingCount);
             float avgTurbidity = calculateAverage(turReadings, readingCount);
-            
+
             Serial.println("📊 Giá trị trung bình:");
             Serial.println("🌡️ Nhiệt độ: " + String(avgTemp));
             Serial.println("📈 pH: " + String(avgPH));
             Serial.println("💧 TDS: " + String(avgTDS));
             Serial.println("🌊 Độ đục: " + String(avgTurbidity));
-            
+
+            String avgLog = "Average - T:" + String(avgTemp) + "°C, pH:" + String(avgPH) +
+                            ", TDS:" + String(avgTDS) + "ppm, Turbidity:" + String(avgTurbidity) + "NTU";
+            writeLogToFile(avgLog);
+
             // Kiểm tra và điều khiển relay
             checkAndControlRelays(avgTemp, avgPH, avgTDS, avgTurbidity);
         }
         return "Measurement stopped";
-    } else if (action == "restart") {
+    }
+    else if (action == "restart")
+    {
         Serial.println("🔄 Đang khởi động lại ESP32...");
+        writeLogToFile("ESP32 restarting...");
         delay(1000);
         ESP.restart();
         return "Restarting device";
-    } else if (action == "status") {
+    }
+    else if (action == "status")
+    {
         String status = "WiFi: " + String(WiFi.RSSI()) + " dBm, IP: " + WiFi.localIP().toString();
         return status;
     }
     return "Unknown command: " + action;
 }
 
-void sendCommandResult(String action, String result) {
-    if (WiFi.status() != WL_CONNECTED) {
+void sendCommandResult(String action, String result)
+{
+    if (WiFi.status() != WL_CONNECTED)
+    {
         Serial.println("❌ WiFi không kết nối, không thể gửi kết quả!");
         return;
     }
-    
+
     HTTPClient http;
     http.begin(workerUrl + "/command_result");
     http.addHeader("Content-Type", "application/json");
-    
+
     DynamicJsonDocument doc(512);
     doc["action"] = action;
     doc["result"] = result;
     String json;
     serializeJson(doc, json);
-    
+
     Serial.println("📤 Gửi kết quả lệnh: " + json);
     int httpResponseCode = http.POST(json);
     Serial.print("📤 Mã phản hồi: ");
@@ -372,36 +1044,44 @@ void sendCommandResult(String action, String result) {
     http.end();
 }
 
-void handleCommand() {
-    if (server.hasArg("plain")) {
+void handleCommand()
+{
+    if (server.hasArg("plain"))
+    {
         String requestBody = server.arg("plain");
         Serial.println("📥 Lệnh nhận được: " + requestBody);
-        
+
         DynamicJsonDocument doc(512);
         DeserializationError error = deserializeJson(doc, requestBody);
-        
-        if (error) {
+
+        if (error)
+        {
             Serial.print("❌ Lỗi phân tích JSON từ yêu cầu web: ");
             Serial.println(error.c_str());
             server.send(400, "application/json", "{\"error\": \"Invalid JSON: " + String(error.c_str()) + "\"}");
             return;
         }
-        
-        if (!doc.containsKey("action")) {
+
+        if (!doc.containsKey("action"))
+        {
             server.send(400, "application/json", "{\"error\": \"Missing 'action' field\"}");
             return;
         }
-        
+
         String action = doc["action"].as<String>();
         String result = executeCommand(action);
         server.send(200, "application/json", "{\"message\": \"" + result + "\"}");
-    } else {
+    }
+    else
+    {
         server.send(400, "application/json", "{\"error\": \"No command received\"}");
     }
 }
 
-void sendHeartbeat() {
-    if (WiFi.status() == WL_CONNECTED) {
+void sendHeartbeat()
+{
+    if (WiFi.status() == WL_CONNECTED)
+    {
         HTTPClient http;
         http.begin(workerUrl + "/heartbeat");
         http.addHeader("Content-Type", "application/json");
@@ -413,67 +1093,89 @@ void sendHeartbeat() {
 }
 
 // Hàm kiểm tra và điều khiển relay
-void checkAndControlRelays(float avgTemp, float avgPH, float avgTDS, float avgTurbidity) {
+void checkAndControlRelays(float avgTemp, float avgPH, float avgTDS, float avgTurbidity)
+{
     bool isWithinRange = true;
-    
+    String alertMessage = "";
+
     // Kiểm tra từng thông số
-    if (avgPH < MIN_PH || avgPH > MAX_PH) {
+    if (avgPH < MIN_PH || avgPH > MAX_PH)
+    {
         Serial.println("⚠️ pH nằm ngoài khoảng cho phép!");
+        alertMessage += "pH out of range (" + String(avgPH) + "); ";
         isWithinRange = false;
     }
-    if (avgTDS < MIN_TDS || avgTDS > MAX_TDS) {
+    if (avgTDS < MIN_TDS || avgTDS > MAX_TDS)
+    {
         Serial.println("⚠️ TDS nằm ngoài khoảng cho phép!");
+        alertMessage += "TDS out of range (" + String(avgTDS) + "); ";
         isWithinRange = false;
     }
-    if (avgTemp < MIN_TEMP || avgTemp > MAX_TEMP) {
+    if (avgTemp < MIN_TEMP || avgTemp > MAX_TEMP)
+    {
         Serial.println("⚠️ Nhiệt độ nằm ngoài khoảng cho phép!");
+        alertMessage += "Temperature out of range (" + String(avgTemp) + "); ";
         isWithinRange = false;
     }
-    if (avgTurbidity < MIN_TURBIDITY || avgTurbidity > MAX_TURBIDITY) {
+    if (avgTurbidity < MIN_TURBIDITY || avgTurbidity > MAX_TURBIDITY)
+    {
         Serial.println("⚠️ Độ đục nằm ngoài khoảng cho phép!");
+        alertMessage += "Turbidity out of range (" + String(avgTurbidity) + "); ";
         isWithinRange = false;
     }
-    
+
     // Điều khiển relay
-    if (isWithinRange) {
+    if (isWithinRange)
+    {
         digitalWrite(RELAY_PIN1, LOW);
         digitalWrite(RELAY_PIN2, HIGH);
         Serial.println("✅ Thông số nằm trong khoảng cho phép. Kích hoạt RELAY_PIN2");
-        delay(5000);
+        writeLogToFile("Parameters within range - RELAY_PIN2 activated");
+        delay(2000);
         digitalWrite(RELAY_PIN2, LOW);
-    } else {
+    }
+    else
+    {
         digitalWrite(RELAY_PIN1, HIGH);
         digitalWrite(RELAY_PIN2, LOW);
         Serial.println("❌ Thông số nằm ngoài khoảng cho phép. Kích hoạt RELAY_PIN1");
-        delay(5000);
+        writeLogToFile("ALERT: " + alertMessage + "- RELAY_PIN1 activated");
+        delay(2000);
         digitalWrite(RELAY_PIN1, LOW);
     }
 }
 
-void setup() {
+void setup()
+{
     Serial.begin(115200);
-    Serial.println("\n\n=== ESP32 Water Monitoring System ===");
-    
+    Serial.println("\n\n=== ESP32 Water Monitoring System with FTP ===");
+
     // Kết nối WiFi
     WiFiManager wifiManager;
     wifiManager.setConfigPortalTimeout(180); // timeout sau 3 phút
-    
-    if (!wifiManager.autoConnect("ESP32_Water_Monitor", "12345678")) {
+
+    if (!wifiManager.autoConnect("ESP32_Water_Monitor", "12345678"))
+    {
         Serial.println("❌ Không thể kết nối WiFi. Khởi động lại...");
         delay(3000);
         ESP.restart();
     }
-    
+
     Serial.println("✅ Kết nối WiFi thành công!");
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
-    
-    // Thiết lập các route cho webserver
 
+    // Khởi động FTP Server
+    ftpServer.begin();
+
+    // Tạo các file mẫu
+    createConfigFiles();
+
+    // Thiết lập các route cho webserver
     server.on("/command", HTTP_POST, handleCommand);
     server.begin();
     Serial.println("✅ Máy chủ web đã khởi động");
-    
+
     // Gửi IP hiện tại lên worker
     sendIPToWorker();
 
@@ -487,71 +1189,126 @@ void setup() {
 
     sensors.begin();
 
-    digitalWrite(RELAY_PIN1,HIGH);
-    digitalWrite(RELAY_PIN2,HIGH);
+    digitalWrite(RELAY_PIN1, HIGH);
+    digitalWrite(RELAY_PIN2, HIGH);
     delay(2000);
-    digitalWrite(RELAY_PIN1,LOW);
-    digitalWrite(RELAY_PIN2,LOW);
+    digitalWrite(RELAY_PIN1, LOW);
+    digitalWrite(RELAY_PIN2, LOW);
+
+    writeLogToFile("ESP32 Water Monitoring System started");
+
+    // --- NTP ---
+    timeClient.begin();
+    while(!timeClient.update()) {
+      timeClient.forceUpdate();
+      delay(100);
+    }
+    Serial.print("NTP Time: ");
+    Serial.println(timeClient.getEpochTime());
 }
 
-void loop() {
-    checkAndUpdateIP();    
-    if (Serial.available()) {
-        String input = Serial.readStringUntil('\n');  // Đọc chuỗi nhập vào
-        input.trim();  // Loại bỏ khoảng trắng
+void loop()
+{
+    // Xử lý FTP clients
+    ftpServer.handleClient();
 
-        if (input == "restart") {
+    checkAndUpdateIP();
+    if (Serial.available())
+    {
+        String input = Serial.readStringUntil('\n'); // Đọc chuỗi nhập vào
+        input.trim();                                // Loại bỏ khoảng trắng
+
+        if (input == "restart")
+        {
             Serial.println("🔄 Đang khởi động lại ESP...");
             ESP.restart();
         }
-        else if (input == "MT1"){
-            digitalWrite(RELAY_PIN1,HIGH);
+        else if (input == "MT1")
+        {
+            digitalWrite(RELAY_PIN1, HIGH);
             delay(2000);
-            digitalWrite(RELAY_PIN1,LOW);
+            digitalWrite(RELAY_PIN1, LOW);
+            writeLogToFile("Manual test - RELAY_PIN1 activated");
         }
-        else if (input == "MT2"){
-            digitalWrite(RELAY_PIN2,HIGH);
+        else if (input == "MT2")
+        {
+            digitalWrite(RELAY_PIN2, HIGH);
             delay(2000);
-            digitalWrite(RELAY_PIN2,LOW);
+            digitalWrite(RELAY_PIN2, LOW);
+            writeLogToFile("Manual test - RELAY_PIN2 activated");
         }
-        else if (input.startsWith("S")) {  // Nhập "S-5.70"
+        else if (input == "ftp")
+        {
+            Serial.println("📁 FTP Server Info:");
+            Serial.println("   Address: ftp://" + WiFi.localIP().toString());
+            Serial.println("   Port: 21");
+            Serial.println("   Username: esp32");
+            Serial.println("   Password: 123456");
+        }
+        else if (input == "files")
+        {
+            Serial.println("📂 Files in SPIFFS:");
+            File root = SPIFFS.open("/");
+            File file = root.openNextFile();
+            while (file)
+            {
+                Serial.println("   " + String(file.name()) + " (" + String(file.size()) + " bytes)");
+                file.close();
+                file = root.openNextFile();
+            }
+            root.close();
+        }
+        else if (input.startsWith("S"))
+        { // Nhập "S-5.70"
             float newSlope = input.substring(1).toFloat();
-            if (newSlope <= -10 || newSlope >= 0) {
+            if (newSlope <= -10 || newSlope >= 0)
+            {
                 Serial.println("❌ Lỗi: Slope không hợp lệ! Vui lòng nhập giá trị từ -10 đến 0.");
-            } else {
+            }
+            else
+            {
                 Slope = newSlope;
                 Serial.print("✅ Slope đã cập nhật: ");
                 Serial.println(Slope);
+                writeLogToFile("Slope updated to: " + String(Slope));
             }
-        } 
-        else if (input.startsWith("A")) {
+        }
+        else if (input.startsWith("A"))
+        {
             int newADC_cal = input.substring(1).toInt();
-            if (newADC_cal < 1000 || newADC_cal > 3000) {
+            if (newADC_cal < 1000 || newADC_cal > 3000)
+            {
                 Serial.println("❌ Lỗi: ADC_cal không hợp lệ! Vui lòng nhập giá trị từ 1000 đến 3000.");
-            } else {
+            }
+            else
+            {
                 ADC_cal = newADC_cal;
                 Serial.print("✅ ADC_cal đã cập nhật: ");
                 Serial.println(ADC_cal);
+                writeLogToFile("ADC_cal updated to: " + String(ADC_cal));
             }
-        } 
-        else {
+        }
+        else
+        {
             Serial.println("❌ Lỗi: Cú pháp không hợp lệ!");
         }
     }
 
-
     // Gửi heartbeat định kỳ
-    if (millis() - lastHeartbeatTime > HEARTBEAT_INTERVAL) {
+    if (millis() - lastHeartbeatTime > HEARTBEAT_INTERVAL)
+    {
         sendHeartbeat();
         lastHeartbeatTime = millis();
     }
-    
-    if (millis() - lastPollTime > POLL_INTERVAL) {
+
+    if (millis() - lastPollTime > POLL_INTERVAL)
+    {
         pollForCommands();
         lastPollTime = millis();
     }
-    
-    if (continuousMeasurement && millis() - lastDataSendTime > DATA_SEND_INTERVAL) {
+
+    if (continuousMeasurement && millis() - lastDataSendTime > DATA_SEND_INTERVAL)
+    {
         sendSensorDataToWorker();
         lastDataSendTime = millis();
     }
