@@ -1,5 +1,14 @@
-WiFiManager.h
-WebServer.h
-HTTPClient.h
-Preferences.h
-ArduinoJson.h
+#include <WiFiManager.h>
+#include <WebServer.h>
+#include <HTTPClient.h>
+#include <Preferences.h>
+#include <ArduinoJson.h>
+#include <math.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include "DFRobot_PH.h"
+#include <EEPROM.h>
+#include <SPIFFS.h>
+#include <WiFiClient.h>
+#include <WiFiUdp.h>
+#include <NTPClient.h>
