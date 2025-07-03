@@ -47,6 +47,9 @@ Truy cập giao diện giám sát tại: **[https://iot.ophus.site](https://iot.
 │   └── main.js
 │   ├── index.js
 │   └── ...
+├── workers/                 # Mã nguồn chính của Worker (nhận/gửi dữ liệu từ ESP32 và Redis) 
+|   ├──Worker_esp32-data-receiver.js
+│   └── ...
 ├── README.md               # Tài liệu hướng dẫn
 └── LICENSE
 ```
