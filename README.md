@@ -47,7 +47,7 @@ Truy cập giao diện giám sát tại: **[https://iot.ophus.site](https://iot.
 │   └── main.js
 │   ├── index.js
 │   └── ...
-├── README.md               # Tài liệu hướng dẫn (file này)
+├── README.md               # Tài liệu hướng dẫn
 └── LICENSE
 ```
 
